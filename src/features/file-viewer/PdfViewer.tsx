@@ -8,7 +8,15 @@ import {
   useState,
 } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
-import { ViewerFloatingToolbar } from './components/ViewerToolbar'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  ViewerFloatingToolbar,
+  ViewerToolbarIconButton,
+} from './components/ViewerToolbar'
+import {
+  FileViewerTooltip,
+  FileViewerTooltipProvider,
+} from './components/FileViewerTooltip'
 import {
   getFileViewerTranslations,
   resolveFormattedMessage,
@@ -113,10 +121,13 @@ export default function PdfViewer({
     const updateSize = () => {
       if (containerRef.current) {
         const newSize = {
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
+          width: Number(containerRef.current.clientWidth.toFixed(2)),
+          height: Number(containerRef.current.clientHeight.toFixed(2)),
         }
-        setInstantSize(newSize)
+        setInstantSize((prev) => {
+          if (prev.width === newSize.width && prev.height === newSize.height) return prev
+          return newSize
+        })
         setRenderedSize((prev) => (prev.width === 0 ? newSize : prev))
       }
     }
@@ -146,7 +157,7 @@ export default function PdfViewer({
         !pageOriginalSize.height
       ) {
         return {
-          width: container.width ? container.width : undefined,
+          width: container.width ? Number(container.width.toFixed(2)) : undefined,
           height: undefined,
         }
       }
@@ -157,10 +168,16 @@ export default function PdfViewer({
       if (viewMode === 'single') {
         if (pageRatio > containerRatio) {
           const width = container.width
-          return { width, height: width / pageRatio }
+          return {
+            width: Number(width.toFixed(2)),
+            height: Number((width / pageRatio).toFixed(2)),
+          }
         } else {
           const height = container.height
-          return { height, width: height * pageRatio }
+          return {
+            height: Number(height.toFixed(2)),
+            width: Number((height * pageRatio).toFixed(2)),
+          }
         }
       } else {
         // Continuous mode: limit width to min(container.width, 50rem)
@@ -173,10 +190,13 @@ export default function PdfViewer({
         }
 
         const width = Math.min(container.width, remToPx * 50)
-        return { width, height: width / pageRatio }
+        return {
+          width: Number(width.toFixed(2)),
+          height: Number((width / pageRatio).toFixed(2)),
+        }
       }
     },
-    [pageOriginalSize, viewMode],
+    [pageOriginalSize.width, pageOriginalSize.height, viewMode],
   )
 
   const instantDimensions = useMemo(
@@ -185,7 +205,7 @@ export default function PdfViewer({
   )
   const renderedDimensions = useMemo(
     () => calculateDimensions(renderedSize),
-    [calculateDimensions, renderedSize],
+    [calculateDimensions, renderedSize.width, renderedSize.height],
   )
 
   const scale = useMemo(() => {
@@ -334,58 +354,83 @@ export default function PdfViewer({
     const paginationBody = (
       <>
         <span>{pdfT.pageLabel}</span>
-        <div className="bg-black/20 rounded px-1 flex items-center justify-center">
-          <input
-            type="text"
-            inputMode="numeric"
-            value={inputPage}
-            onChange={(event) => setInputPage(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
+        {viewMode === 'single' ? (
+          <div className="bg-black/20 rounded px-1 flex items-center justify-center">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={inputPage}
+              onChange={(event) => setInputPage(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  const p = parseInt(inputPage, 10)
+                  if (!isNaN(p)) goToPage(p)
+                }
+              }}
+              onBlur={() => {
                 const p = parseInt(inputPage, 10)
                 if (!isNaN(p)) goToPage(p)
-              }
-            }}
-            onBlur={() => {
-              const p = parseInt(inputPage, 10)
-              if (!isNaN(p)) goToPage(p)
-              else setInputPage(String(pageNumber))
-            }}
-            className="w-10 bg-transparent text-center focus:outline-none transition-colors"
-            aria-label={resolveFormattedMessage(pdfT.pageInputAriaLabel, {
-              value: inputPage,
-            })}
-          />
-        </div>
+                else setInputPage(String(pageNumber))
+              }}
+              className="w-10 bg-transparent text-center focus:outline-none transition-colors"
+              aria-label={resolveFormattedMessage(pdfT.pageInputAriaLabel, {
+                value: inputPage,
+              })}
+            />
+          </div>
+        ) : (
+          <span>{pageNumber}</span>
+        )}
         <span className="opacity-60 mx-1">/</span>
         <span>{numPages}</span>
       </>
     )
 
-    if (viewMode === 'single') {
-      return (
-        <div
-          className={`flex items-center gap-2 text-white ${paginationClassName || ''}`}
-        >
-          {paginationBody}
-        </div>
-      )
-    }
-
     return (
       <ViewerFloatingToolbar
-        density="comfortable"
+        density={viewMode === 'continuous' ? 'comfortable' : 'compact'}
         className={paginationClassName || ''}
       >
+        {viewMode === 'single' && (
+          <FileViewerTooltip
+            content={pdfT.previousPageAriaLabel || 'Página anterior'}
+            disabled={props.isFirstPage}
+          >
+            <ViewerToolbarIconButton
+              disabled={props.isFirstPage}
+              onClick={previousPage}
+              aria-label={pdfT.previousPageAriaLabel || 'Página anterior'}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </ViewerToolbarIconButton>
+          </FileViewerTooltip>
+        )}
+
         {paginationBody}
+
+        {viewMode === 'single' && (
+          <FileViewerTooltip
+            content={pdfT.nextPageAriaLabel || 'Próxima página'}
+            disabled={props.isLastPage}
+          >
+            <ViewerToolbarIconButton
+              disabled={props.isLastPage}
+              onClick={nextPage}
+              aria-label={pdfT.nextPageAriaLabel || 'Próxima página'}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </ViewerToolbarIconButton>
+          </FileViewerTooltip>
+        )}
       </ViewerFloatingToolbar>
     )
   }
 
   return (
-    <div
-      className={`flex flex-col items-center gap-4 w-full h-full max-h-full overflow-hidden relative ${className}`}
-    >
+    <FileViewerTooltipProvider>
+      <div
+        className={`flex flex-col items-center gap-4 w-full h-full max-h-full overflow-hidden relative ${className}`}
+      >
       <ScrollAreaPrimitive.Root className="flex w-full flex-1 relative overflow-hidden">
         <ScrollAreaPrimitive.Viewport
           ref={containerRef}
@@ -502,6 +547,7 @@ export default function PdfViewer({
       </ScrollAreaPrimitive.Root>
 
       {renderPaginationElement()}
-    </div>
+      </div>
+    </FileViewerTooltipProvider>
   )
 }
