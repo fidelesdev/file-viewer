@@ -1,4 +1,5 @@
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   ReactNode,
   useCallback,
@@ -8,15 +9,15 @@ import {
   useState,
 } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import {
-  ViewerFloatingToolbar,
-  ViewerToolbarIconButton,
-} from './components/ViewerToolbar'
 import {
   FileViewerTooltip,
   FileViewerTooltipProvider,
 } from './components/FileViewerTooltip'
+import {
+  ViewerFloatingToolbar,
+  ViewerToolbarDivider,
+  ViewerToolbarIconButton,
+} from './components/ViewerToolbar'
 import {
   getFileViewerTranslations,
   resolveFormattedMessage,
@@ -47,7 +48,7 @@ export interface PdfViewerProps {
   // View mode
   viewMode?: PdfViewMode // default: 'single'
 
-  // Resize
+  // Resize: debounced size used for <Page width=…> (canvas); instant size drives CSS scale while resizing
   debounceDelay?: number // default: 300ms
 
   // Rendering
@@ -121,14 +122,13 @@ export default function PdfViewer({
     const updateSize = () => {
       if (containerRef.current) {
         const newSize = {
-          width: Number(containerRef.current.clientWidth.toFixed(2)),
-          height: Number(containerRef.current.clientHeight.toFixed(2)),
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
         }
-        setInstantSize((prev) => {
-          if (prev.width === newSize.width && prev.height === newSize.height) return prev
-          return newSize
-        })
-        setRenderedSize((prev) => (prev.width === 0 ? newSize : prev))
+        setInstantSize(newSize)
+        setRenderedSize((prev) =>
+          prev.width === 0 && newSize.width > 0 ? newSize : prev,
+        )
       }
     }
 
@@ -141,24 +141,28 @@ export default function PdfViewer({
 
   useEffect(() => {
     if (instantSize.width === 0) return
-    const timer = setTimeout(() => {
+    const timerId = window.setTimeout(() => {
       setRenderedSize(instantSize)
     }, debounceDelay)
-    return () => clearTimeout(timer)
+    return () => window.clearTimeout(timerId)
   }, [instantSize, debounceDelay])
 
   // --- Dimension Calculation ---
   const calculateDimensions = useCallback(
     (container: { width: number; height: number }) => {
-      if (
-        !container.width ||
-        !container.height ||
-        !pageOriginalSize.width ||
-        !pageOriginalSize.height
-      ) {
+      if (!container.width || !container.height) {
         return {
-          width: container.width ? Number(container.width.toFixed(2)) : undefined,
-          height: undefined,
+          width: container.width ? container.width : undefined,
+          height: container.height ? container.height : undefined,
+        }
+      }
+
+      // Before the first page reports its size, use the viewport so <Page> can mount
+      // and unlock aspect ratio (avoids height=undefined → nothing rendered).
+      if (!pageOriginalSize.width || !pageOriginalSize.height) {
+        return {
+          width: container.width,
+          height: container.height,
         }
       }
 
@@ -168,20 +172,13 @@ export default function PdfViewer({
       if (viewMode === 'single') {
         if (pageRatio > containerRatio) {
           const width = container.width
-          return {
-            width: Number(width.toFixed(2)),
-            height: Number((width / pageRatio).toFixed(2)),
-          }
+          return { width, height: width / pageRatio }
         } else {
           const height = container.height
-          return {
-            height: Number(height.toFixed(2)),
-            width: Number((height * pageRatio).toFixed(2)),
-          }
+          return { height, width: height * pageRatio }
         }
       } else {
-        // Continuous mode: limit width to min(container.width, 50rem)
-        // This dramatically reduces RAM usage for high DPI PDFs on ultra-wide screens
+        // Continuous mode: width follows viewport up to 40rem, then scales height by page ratio
         let remToPx = 16
         if (typeof document !== 'undefined') {
           remToPx =
@@ -189,30 +186,40 @@ export default function PdfViewer({
             16
         }
 
-        const width = Math.min(container.width, remToPx * 50)
-        return {
-          width: Number(width.toFixed(2)),
-          height: Number((width / pageRatio).toFixed(2)),
-        }
+        const width = Math.min(container.width, remToPx * 40)
+        return { width, height: width / pageRatio }
       }
     },
-    [pageOriginalSize.width, pageOriginalSize.height, viewMode],
+    [pageOriginalSize, viewMode],
   )
 
   const instantDimensions = useMemo(
     () => calculateDimensions(instantSize),
     [calculateDimensions, instantSize],
   )
+
   const renderedDimensions = useMemo(
     () => calculateDimensions(renderedSize),
-    [calculateDimensions, renderedSize.width, renderedSize.height],
+    [calculateDimensions, renderedSize],
   )
 
-  const scale = useMemo(() => {
-    if (viewMode === 'continuous') return 1 // No scaling in continuous mode to avoid height glitches
-    if (!instantDimensions.width || !renderedDimensions.width) return 1
-    return instantDimensions.width / renderedDimensions.width
-  }, [instantDimensions.width, renderedDimensions.width, viewMode])
+  /** CSS scale from debounced canvas layout → current viewport (uniform, object-contain style). */
+  const layoutScale = useMemo(() => {
+    const renderedWidth = renderedDimensions.width
+    const renderedHeight = renderedDimensions.height
+    const instantWidth = instantDimensions.width
+    const instantHeight = instantDimensions.height
+    if (!renderedWidth || !instantWidth || !instantHeight) {
+      return 1
+    }
+    if (!renderedHeight) {
+      return instantWidth / renderedWidth
+    }
+    return Math.min(
+      instantWidth / renderedWidth,
+      instantHeight / renderedHeight,
+    )
+  }, [instantDimensions, renderedDimensions])
 
   // --- PDF Callbacks ---
   const handleDocumentLoadSuccess = ({
@@ -297,29 +304,47 @@ export default function PdfViewer({
   )
 
   // --- Continuous Mode Observer ---
+  // Stable ref to the current page so the observer effect doesn't reset on every page change
+  // (which would lose the accumulated ratio map and cause flicker).
+  const pageNumberRef = useRef(pageNumber)
+  useEffect(() => {
+    pageNumberRef.current = pageNumber
+  }, [pageNumber])
+
   useEffect(() => {
     if (viewMode !== 'continuous' || !numPages || !containerRef.current) return
 
+    // IntersectionObserver callbacks only contain entries whose threshold crossed in this tick,
+    // not all observed targets. We track the latest ratio per page in a Map and always pick the
+    // current global maximum to avoid flicker (e.g. 3 → 4 → 3 → 4 during a single scroll).
+    const ratios = new Map<number, number>()
+
     const observer = new IntersectionObserver(
       (entries) => {
-        const visibleEntries = entries.filter((e) => e.isIntersecting)
-        if (visibleEntries.length > 0) {
-          // Find the entry with the highest intersection ratio
-          const maxVisible = visibleEntries.reduce((prev, current) =>
-            prev.intersectionRatio > current.intersectionRatio ? prev : current,
-          )
-          const pStr = maxVisible.target.getAttribute('data-page-number')
-          if (pStr) {
-            const p = parseInt(pStr, 10)
-            if (p !== pageNumber) {
-              setPage(p)
-            }
+        for (const entry of entries) {
+          const pStr = entry.target.getAttribute('data-page-number')
+          if (!pStr) continue
+          const p = parseInt(pStr, 10)
+          if (!Number.isFinite(p)) continue
+          ratios.set(p, entry.intersectionRatio)
+        }
+
+        let bestPage = 0
+        let bestRatio = 0
+        ratios.forEach((ratio, page) => {
+          if (ratio > bestRatio) {
+            bestRatio = ratio
+            bestPage = page
           }
+        })
+
+        if (bestPage > 0 && bestRatio > 0 && bestPage !== pageNumberRef.current) {
+          setPage(bestPage)
         }
       },
       {
         root: containerRef.current,
-        threshold: [0.1, 0.5, 0.9],
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
       },
     )
 
@@ -329,7 +354,7 @@ export default function PdfViewer({
     })
 
     return () => observer.disconnect()
-  }, [numPages, viewMode, pageNumber, setPage])
+  }, [numPages, viewMode, setPage])
 
   // --- Render Pagination ---
   const renderPaginationElement = () => {
@@ -379,7 +404,7 @@ export default function PdfViewer({
             />
           </div>
         ) : (
-          <span>{pageNumber}</span>
+          <span className="px-1">{pageNumber}</span>
         )}
         <span className="opacity-60 mx-1">/</span>
         <span>{numPages}</span>
@@ -387,41 +412,38 @@ export default function PdfViewer({
     )
 
     return (
-      <ViewerFloatingToolbar
-        density={viewMode === 'continuous' ? 'comfortable' : 'compact'}
-        className={paginationClassName || ''}
-      >
-        {viewMode === 'single' && (
-          <FileViewerTooltip
-            content={pdfT.previousPageAriaLabel || 'Página anterior'}
+      <ViewerFloatingToolbar className={paginationClassName || ''}>
+        <FileViewerTooltip
+          content={pdfT.previousPageTooltip}
+          disabled={props.isFirstPage}
+        >
+          <ViewerToolbarIconButton
             disabled={props.isFirstPage}
+            onClick={previousPage}
+            aria-label={pdfT.previousPageAriaLabel}
           >
-            <ViewerToolbarIconButton
-              disabled={props.isFirstPage}
-              onClick={previousPage}
-              aria-label={pdfT.previousPageAriaLabel || 'Página anterior'}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </ViewerToolbarIconButton>
-          </FileViewerTooltip>
-        )}
+            <ChevronLeft className="h-5 w-5" aria-hidden />
+          </ViewerToolbarIconButton>
+        </FileViewerTooltip>
+
+        <ViewerToolbarDivider />
 
         {paginationBody}
 
-        {viewMode === 'single' && (
-          <FileViewerTooltip
-            content={pdfT.nextPageAriaLabel || 'Próxima página'}
+        <ViewerToolbarDivider />
+
+        <FileViewerTooltip
+          content={pdfT.nextPageTooltip}
+          disabled={props.isLastPage}
+        >
+          <ViewerToolbarIconButton
             disabled={props.isLastPage}
+            onClick={nextPage}
+            aria-label={pdfT.nextPageAriaLabel}
           >
-            <ViewerToolbarIconButton
-              disabled={props.isLastPage}
-              onClick={nextPage}
-              aria-label={pdfT.nextPageAriaLabel || 'Próxima página'}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </ViewerToolbarIconButton>
-          </FileViewerTooltip>
-        )}
+            <ChevronRight className="h-5 w-5" aria-hidden />
+          </ViewerToolbarIconButton>
+        </FileViewerTooltip>
       </ViewerFloatingToolbar>
     )
   }
@@ -431,7 +453,7 @@ export default function PdfViewer({
       <div
         className={`flex flex-col items-center gap-4 w-full h-full max-h-full overflow-hidden relative ${className}`}
       >
-      <ScrollAreaPrimitive.Root className="flex w-full flex-1 relative overflow-hidden">
+        <ScrollAreaPrimitive.Root className="flex w-full flex-1 relative overflow-hidden">
         <ScrollAreaPrimitive.Viewport
           ref={containerRef}
           className="w-full h-full rounded-[inherit] [&>div]:min-h-full"
@@ -439,8 +461,8 @@ export default function PdfViewer({
           <div
             className={
               viewMode === 'continuous'
-                ? 'flex flex-col items-center gap-4 py-4 w-full'
-                : 'flex justify-center items-center w-full'
+                ? 'flex min-h-full w-full flex-col items-center gap-4 py-4'
+                : 'flex h-full min-h-full w-full items-center justify-center'
             }
           >
             <Document
@@ -450,57 +472,70 @@ export default function PdfViewer({
               loading={renderLoading}
               className={
                 viewMode === 'continuous'
-                  ? 'flex flex-col items-center gap-4 w-full'
-                  : 'flex justify-center items-center'
+                  ? 'flex w-full flex-col items-center gap-4'
+                  : 'flex h-full min-h-full w-full items-center justify-center'
               }
             >
-              {viewMode === 'single' && (
+              {viewMode === 'single' &&
+              renderedDimensions.width &&
+              instantDimensions.width &&
+              instantDimensions.height ? (
                 <div
+                  className={`flex max-h-full max-w-full shrink-0 items-center justify-center overflow-hidden ${pageClassName}`}
                   style={{
-                    width: renderedDimensions.width,
-                    height: renderedDimensions.height,
-                    transform: `scale(${scale})`,
-                    transformOrigin: 'center center',
+                    width: instantDimensions.width,
+                    height: instantDimensions.height,
                   }}
-                  className={`relative shadow-lg bg-white overflow-hidden flex justify-center items-center will-change-transform shrink-0 ${pageClassName}`}
                 >
-                  <Page
-                    pageNumber={pageNumber}
-                    onLoadSuccess={(page) =>
-                      handlePageLoadSuccess(pageNumber, page)
-                    }
-                    renderTextLayer={renderTextLayer}
-                    renderAnnotationLayer={renderAnnotationLayer}
-                    className="flex justify-center items-center !bg-transparent"
-                    renderMode="canvas"
-                    width={renderedDimensions.width}
-                    height={renderedDimensions.height}
-                    loading={null}
-                  />
+                  <div
+                    className="relative flex h-full w-full items-center justify-center overflow-hidden bg-white shadow-lg"
+                  >
+                    <Page
+                      pageNumber={pageNumber}
+                      onLoadSuccess={(page) =>
+                        handlePageLoadSuccess(pageNumber, page)
+                      }
+                      renderTextLayer={renderTextLayer}
+                      renderAnnotationLayer={renderAnnotationLayer}
+                      className="flex h-full w-full shrink flex-1 items-center justify-center !bg-transparent [&_canvas]:!h-full [&_canvas]:!w-full"
+                      renderMode="canvas"
+                      width={renderedDimensions.width}
+                      loading={null}
+                    />
+                  </div>
                 </div>
-              )}
+              ) : null}
 
               {viewMode === 'continuous' &&
                 numPages > 0 &&
+                renderedDimensions.width &&
+                renderedDimensions.height &&
+                instantDimensions.width &&
                 Array.from(new Array(numPages), (_, index) => {
                   const p = index + 1
 
                   // Only mount the heavy <Page> component if it's within the sliding window
                   const isInWindow = Math.abs(p - pageNumber) <= preloadAhead
 
-                  // If it's outside the window, use its last known exact height,
-                  // or fall back to the estimated height based on the first page ratio
-                  const knownHeight = renderedHeights.current.get(p)
-                  const placeholderHeight = knownHeight ?? renderedDimensions.height
+                  const renderedPageHeight =
+                    renderedHeights.current.get(p) ??
+                    renderedDimensions.height ??
+                    0
+
+                  const slotWidth = instantDimensions.width
+                  const slotHeight = renderedPageHeight * layoutScale
 
                   const placeholderStyle =
-                    !isInWindow && placeholderHeight
+                    !isInWindow && slotHeight
                       ? {
-                          width: renderedDimensions.width,
-                          height: placeholderHeight,
+                          width: slotWidth,
+                          height: slotHeight,
                           backgroundColor: '#80808040',
                         }
-                      : undefined
+                      : {
+                          width: slotWidth,
+                          height: slotHeight,
+                        }
 
                   return (
                     <div
@@ -511,19 +546,27 @@ export default function PdfViewer({
                         else pageRefs.current.delete(p)
                       }}
                       style={placeholderStyle}
-                      className={`relative shadow-lg bg-white overflow-hidden flex justify-center items-center shrink-0 ${pageClassName}`}
+                      className={
+                        isInWindow
+                          ? `relative flex shrink-0 items-center justify-center overflow-hidden ${pageClassName}`
+                          : 'relative flex shrink-0 items-center justify-center overflow-hidden'
+                      }
                     >
                       {isInWindow ? (
-                        <Page
-                          pageNumber={p}
-                          onLoadSuccess={(page) => handlePageLoadSuccess(p, page)}
-                          renderTextLayer={renderTextLayer}
-                          renderAnnotationLayer={renderAnnotationLayer}
-                          className="flex justify-center items-center !bg-transparent"
-                          renderMode="canvas"
-                          width={renderedDimensions.width}
-                          loading={null}
-                        />
+                        <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-white shadow-lg">
+                          <Page
+                            pageNumber={p}
+                            onLoadSuccess={(page) =>
+                              handlePageLoadSuccess(p, page)
+                            }
+                            renderTextLayer={renderTextLayer}
+                            renderAnnotationLayer={renderAnnotationLayer}
+                            className="flex h-full w-full shrink flex-1 items-center justify-center !bg-transparent [&_canvas]:!h-full [&_canvas]:!w-full"
+                            renderMode="canvas"
+                            width={renderedDimensions.width}
+                            loading={null}
+                          />
+                        </div>
                       ) : null}
                     </div>
                   )

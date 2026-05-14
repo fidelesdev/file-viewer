@@ -191,7 +191,7 @@ export default function ImageViewer({ url, name, language = 'english' }: ImageVi
   return (
     <FileViewerTooltipProvider>
       <div
-        className="relative flex w-full h-full items-center justify-center overflow-hidden"
+        className="relative flex size-full items-center justify-center overflow-hidden"
         onWheel={handleWheelZoom}
       >
         {!hasImageLoaded ? (
@@ -200,7 +200,7 @@ export default function ImageViewer({ url, name, language = 'english' }: ImageVi
             aria-busy
             aria-live="polite"
           >
-            <LoaderCircle className="w-10 h-10 animate-spin text-white" aria-hidden />
+            <LoaderCircle className="size-10 animate-spin text-white" aria-hidden />
           </div>
         ) : null}
 
@@ -220,8 +220,8 @@ export default function ImageViewer({ url, name, language = 'english' }: ImageVi
           {({ zoomIn, zoomOut, resetTransform }) => (
             <>
               <TransformComponent
-                wrapperClass={`!w-full !h-full ${wrapperCursorClass}`}
-                contentClass="!w-full !h-full flex items-center justify-center"
+                wrapperClass={`!size-full ${wrapperCursorClass}`}
+                contentClass="!size-full flex items-center justify-center"
               >
                 <img
                   src={url}
@@ -232,7 +232,7 @@ export default function ImageViewer({ url, name, language = 'english' }: ImageVi
                 />
               </TransformComponent>
 
-              <ViewerFloatingToolbar density="compact">
+              <ViewerFloatingToolbar>
                 <span
                   ref={scaleRef}
                   className="w-12 text-center text-sm font-medium text-white/90"
@@ -251,7 +251,7 @@ export default function ImageViewer({ url, name, language = 'english' }: ImageVi
                     onClick={() => zoomOut()}
                     aria-label={imageT.zoomOutAriaLabel}
                   >
-                    <ZoomOut className="w-5 h-5" />
+                    <ZoomOut className="size-5" />
                   </ViewerToolbarIconButton>
                 </FileViewerTooltip>
 
@@ -267,7 +267,7 @@ export default function ImageViewer({ url, name, language = 'english' }: ImageVi
                     }}
                     aria-label={imageT.fitScreenAriaLabel}
                   >
-                    <Scan className="w-5 h-5" />
+                    <Scan className="size-5" />
                   </ViewerToolbarIconButton>
                 </FileViewerTooltip>
 
@@ -280,7 +280,7 @@ export default function ImageViewer({ url, name, language = 'english' }: ImageVi
                     onClick={() => zoomIn()}
                     aria-label={imageT.zoomInAriaLabel}
                   >
-                    <ZoomIn className="w-5 h-5" />
+                    <ZoomIn className="size-5" />
                   </ViewerToolbarIconButton>
                 </FileViewerTooltip>
               </ViewerFloatingToolbar>

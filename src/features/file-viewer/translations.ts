@@ -31,6 +31,8 @@ export interface PdfViewerTranslations {
   pageInputAriaLabel: FormattableMessage<PdfPageInputAriaLabelParams>
   previousPageAriaLabel: string
   nextPageAriaLabel: string
+  previousPageTooltip: string
+  nextPageTooltip: string
 }
 
 export interface FileViewerTranslations {
@@ -65,6 +67,8 @@ export const fileViewerTranslationsByLanguage: Record<
       pageInputAriaLabel: ({ value }) => `Page ${value}`,
       previousPageAriaLabel: 'Previous page',
       nextPageAriaLabel: 'Next page',
+      previousPageTooltip: 'Previous page',
+      nextPageTooltip: 'Next page',
     },
   },
   portuguese: {
@@ -89,6 +93,8 @@ export const fileViewerTranslationsByLanguage: Record<
       pageInputAriaLabel: ({ value }) => `Página ${value}`,
       previousPageAriaLabel: 'Página anterior',
       nextPageAriaLabel: 'Próxima página',
+      previousPageTooltip: 'Página anterior',
+      nextPageTooltip: 'Próxima página',
     },
   },
 }
