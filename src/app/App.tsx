@@ -56,7 +56,7 @@ export function App() {
           className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 px-5 py-3 text-sm font-medium ring-1 ring-zinc-700 hover:bg-zinc-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           aria-label="Abrir exemplo PDF"
         >
-          <FileText className="size-5" aria-hidden />
+          <FileText className="w-5 h-5" aria-hidden />
           PDF de exemplo
         </button>
 
@@ -66,7 +66,7 @@ export function App() {
           className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 px-5 py-3 text-sm font-medium ring-1 ring-zinc-700 hover:bg-zinc-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           aria-label="Abrir exemplo JPG"
         >
-          <FileImage className="size-5" aria-hidden />
+          <FileImage className="w-5 h-5" aria-hidden />
           Imagem JPG
         </button>
 
@@ -76,7 +76,7 @@ export function App() {
           className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 px-5 py-3 text-sm font-medium ring-1 ring-zinc-700 hover:bg-zinc-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           aria-label="Abrir extensão sem suporte"
         >
-          <FileQuestion className="size-5" aria-hidden />
+          <FileQuestion className="w-5 h-5" aria-hidden />
           Formato não suportado
         </button>
       </nav>
