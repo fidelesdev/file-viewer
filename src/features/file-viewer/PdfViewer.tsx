@@ -46,7 +46,7 @@ export interface PdfViewerProps {
   url: string
 
   // View mode
-  viewMode?: PdfViewMode // default: 'single'
+  viewMode?: PdfViewMode // default: 'continuous'
 
   // Resize: debounced size used for <Page width=…> (canvas); instant size drives CSS scale while resizing
   debounceDelay?: number // default: 300ms
@@ -79,12 +79,12 @@ export interface PdfViewerProps {
 
 export default function PdfViewer({
   url,
-  viewMode = 'single',
+  viewMode = 'continuous',
   debounceDelay = 300,
   renderTextLayer = true,
   renderAnnotationLayer = true,
   renderLoading = null,
-  preloadAhead = 5,
+  preloadAhead = 1,
   onLoadSuccess,
   onLoadError,
   onPageChange,
@@ -99,6 +99,7 @@ export default function PdfViewer({
 
   const [numPages, setNumPages] = useState<number>(0)
   const [pageNumber, setPageNumber] = useState<number>(defaultPage)
+  const [visibleRange, setVisibleRange] = useState({ start: defaultPage, end: defaultPage })
   const [inputPage, setInputPage] = useState<string>(String(defaultPage))
   const containerRef = useRef<HTMLDivElement>(null)
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
@@ -116,10 +117,15 @@ export default function PdfViewer({
   const [instantZoom, setInstantZoom] = useState(1)
   const [renderedZoom, setRenderedZoom] = useState(1)
 
+  // Keep track of whether the user has interacted with zoom yet. 
+  // If not, we don't apply CSS transitions to avoid initial layout jank from placeholders.
+  const hasZoomedRef = useRef(false)
+
   // Reset zoom and clear cached heights when URL or view mode changes
   useEffect(() => {
     setInstantZoom(1)
     setRenderedZoom(1)
+    hasZoomedRef.current = false
     renderedHeights.current.clear()
   }, [url, viewMode])
 
@@ -159,8 +165,8 @@ export default function PdfViewer({
     const updateSize = () => {
       if (containerRef.current) {
         const newSize = {
-          width: Number(containerRef.current.clientWidth.toFixed(2)),
-          height: Number(containerRef.current.clientHeight.toFixed(2)),
+          width: Math.trunc(containerRef.current.clientWidth),
+          height: Math.trunc(containerRef.current.clientHeight),
         }
         setInstantSize((prev) => {
           if (prev.width === newSize.width && prev.height === newSize.height) return prev
@@ -192,8 +198,8 @@ export default function PdfViewer({
     (container: { width: number; height: number }) => {
       if (!container.width || !container.height) {
         return {
-          width: container.width ? Number(container.width.toFixed(2)) : undefined,
-          height: container.height ? Number(container.height.toFixed(2)) : undefined,
+          width: container.width ? Math.trunc(container.width) : undefined,
+          height: container.height ? Math.trunc(container.height) : undefined,
         }
       }
 
@@ -207,25 +213,25 @@ export default function PdfViewer({
               parseFloat(getComputedStyle(document.documentElement).fontSize) ||
               16
           }
-          const width = Number(Math.min(container.width, remToPx * 50).toFixed(2))
+          const width = Math.trunc(Math.min(container.width, remToPx * 50))
           return {
             width,
-            height: Number((width * 1.414).toFixed(2)), // Approximate A4 ratio
+            height: Math.trunc(width * 1.414), // Approximate A4 ratio
           }
         }
         
         // Single view mode: guess the dimensions based on A4 to avoid transition jank from full-width
         const height = container.height
-        const width = Number((height / 1.414).toFixed(2))
+        const width = Math.trunc(height / 1.414)
         if (width > container.width) {
           return {
             width: container.width,
-            height: Number((container.width * 1.414).toFixed(2))
+            height: Math.trunc(container.width * 1.414)
           }
         }
         return {
           width,
-          height: Number(height.toFixed(2)),
+          height: Math.trunc(height),
         }
       }
 
@@ -235,10 +241,10 @@ export default function PdfViewer({
       if (viewMode === 'single') {
         if (pageRatio > containerRatio) {
           const width = container.width
-          return { width, height: Number((width / pageRatio).toFixed(2)) }
+          return { width, height: Math.trunc(width / pageRatio) }
         } else {
           const height = container.height
-          return { height, width: Number((height * pageRatio).toFixed(2)) }
+          return { height, width: Math.trunc(height * pageRatio) }
         }
       } else {
         // Continuous mode: width follows viewport up to 50rem, then scales height by page ratio
@@ -249,8 +255,8 @@ export default function PdfViewer({
             16
         }
 
-        const width = Number(Math.min(container.width, remToPx * 50).toFixed(2))
-        return { width, height: Number((width / pageRatio).toFixed(2)) }
+        const width = Math.trunc(Math.min(container.width, remToPx * 50))
+        return { width, height: Math.trunc(width / pageRatio) }
       }
     },
     [pageOriginalSize, viewMode],
@@ -269,10 +275,10 @@ export default function PdfViewer({
   const zoomedRenderedDimensions = useMemo(() => {
     return {
       width: renderedDimensions.width
-        ? Number((renderedDimensions.width * renderedZoom).toFixed(2))
+        ? Math.trunc(renderedDimensions.width * renderedZoom)
         : undefined,
       height: renderedDimensions.height
-        ? Number((renderedDimensions.height * renderedZoom).toFixed(2))
+        ? Math.trunc(renderedDimensions.height * renderedZoom)
         : undefined,
     }
   }, [renderedDimensions, renderedZoom])
@@ -280,10 +286,10 @@ export default function PdfViewer({
   const zoomedInstantDimensions = useMemo(() => {
     return {
       width: instantDimensions.width
-        ? Number((instantDimensions.width * instantZoom).toFixed(2))
+        ? Math.trunc(instantDimensions.width * instantZoom)
         : undefined,
       height: instantDimensions.height
-        ? Number((instantDimensions.height * instantZoom).toFixed(2))
+        ? Math.trunc(instantDimensions.height * instantZoom)
         : undefined,
     }
   }, [instantDimensions, instantZoom])
@@ -330,13 +336,13 @@ export default function PdfViewer({
     // Only use the first page's natural aspect ratio for global dimension scaling placeholders
     if (pageIndex === 1) {
       setPageOriginalSize({
-        width: Number(page.width.toFixed(2)),
-        height: Number(page.height.toFixed(2)),
+        width: Math.trunc(page.width),
+        height: Math.trunc(page.height),
       })
     }
 
     // Store exact height for this specific page when it unmounts into a placeholder
-    renderedHeights.current.set(pageIndex, Number(page.height.toFixed(2)))
+    renderedHeights.current.set(pageIndex, Math.trunc(page.height))
   }
 
   // --- Page Navigation & Lazy Loading ---
@@ -435,7 +441,15 @@ export default function PdfViewer({
 
         let bestPage = 0
         let bestRatio = 0
+        let minVisible = Infinity
+        let maxVisible = -Infinity
+
         ratios.forEach((ratio, page) => {
+          if (ratio > 0) {
+            minVisible = Math.min(minVisible, page)
+            maxVisible = Math.max(maxVisible, page)
+          }
+
           if (ratio > bestRatio) {
             bestRatio = ratio
             bestPage = page
@@ -444,6 +458,15 @@ export default function PdfViewer({
 
         if (bestPage > 0 && bestRatio > 0 && bestPage !== pageNumberRef.current) {
           setPage(bestPage)
+        }
+
+        if (minVisible !== Infinity && maxVisible !== -Infinity) {
+          setVisibleRange((prev) => {
+            if (prev.start !== minVisible || prev.end !== maxVisible) {
+              return { start: minVisible, end: maxVisible }
+            }
+            return prev
+          })
         }
       },
       {
@@ -515,22 +538,25 @@ export default function PdfViewer({
   }, [])
 
   const handleZoomIn = useCallback(() => {
+    hasZoomedRef.current = true
     preserveScrollPosition()
-    setInstantZoom((prev) => Math.min(prev * 1.15, 8))
+    setInstantZoom((prev) => Math.min(prev * 1.3, 4))
   }, [preserveScrollPosition])
 
   const handleZoomOut = useCallback(() => {
+    hasZoomedRef.current = true
     preserveScrollPosition()
-    setInstantZoom((prev) => Math.max(prev / 1.15, 0.5))
+    setInstantZoom((prev) => Math.max(prev / 1.3, 0.5))
   }, [preserveScrollPosition])
 
   const handleZoomReset = useCallback(() => {
+    hasZoomedRef.current = true
     preserveScrollPosition()
     setInstantZoom(1)
   }, [preserveScrollPosition])
 
   const zoomOutDisabled = instantZoom <= 0.501
-  const zoomInDisabled = instantZoom >= 7.99
+  const zoomInDisabled = instantZoom >= 3.99
   const fitDisabled = Math.abs(instantZoom - 1) < 0.01
 
   // --- Render Pagination ---
@@ -669,8 +695,6 @@ export default function PdfViewer({
     )
   }
 
-  // console.log('zoomedRenderedDimensions', zoomedRenderedDimensions)
-  console.log('zoomedInstantDimensions', zoomedInstantDimensions)
 
   return (
     <FileViewerTooltipProvider>
@@ -705,7 +729,7 @@ export default function PdfViewer({
               zoomedInstantDimensions.width &&
               zoomedInstantDimensions.height ? (
                 <div
-                  className={`relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''} ${pageClassName}`}
+                  className={`relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${hasZoomedRef.current && pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''} ${pageClassName}`}
                   style={{
                     width: zoomedInstantDimensions.width,
                     height: zoomedInstantDimensions.height,
@@ -738,8 +762,10 @@ export default function PdfViewer({
                 Array.from(new Array(numPages), (_, index) => {
                   const p = index + 1
 
-                  // Only mount the heavy <Page> component if it's within the sliding window
-                  const isInWindow = Math.abs(p - pageNumber) <= preloadAhead
+                  // Mount the heavy <Page> component if it's visible, plus the buffer ahead/behind
+                  const isInWindow =
+                    p >= visibleRange.start - preloadAhead &&
+                    p <= visibleRange.end + preloadAhead
 
                   const renderedPageHeight =
                     renderedHeights.current.get(p) ??
@@ -747,11 +773,9 @@ export default function PdfViewer({
                     0
 
                   const slotWidth = zoomedInstantDimensions.width
-                    ? Number(zoomedInstantDimensions.width.toFixed(2))
+                    ? Math.trunc(zoomedInstantDimensions.width)
                     : undefined
-                  const slotHeight = Number(
-                    (renderedPageHeight * layoutScale).toFixed(2),
-                  )
+                  const slotHeight = Math.trunc(renderedPageHeight * layoutScale)
 
                   const placeholderStyle =
                     !isInWindow && slotHeight
@@ -776,8 +800,8 @@ export default function PdfViewer({
                       style={placeholderStyle}
                       className={
                         isInWindow
-                          ? `relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''} ${pageClassName}`
-                          : `relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''}`
+                          ? `relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${hasZoomedRef.current && pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''} ${pageClassName}`
+                          : `relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${hasZoomedRef.current && pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''}`
                       }
                     >
                       {isInWindow ? (
@@ -804,13 +828,13 @@ export default function PdfViewer({
         </ScrollAreaPrimitive.Viewport>
         <ScrollAreaPrimitive.Scrollbar
           orientation="vertical"
-          className="flex touch-none select-none transition-colors w-2.5 border-l border-l-transparent p-[1px] hover:bg-black/10 z-20"
+          className="flex touch-none select-none transition-colors w-4 border-l border-l-transparent p-[2px] hover:bg-black/10 z-20"
         >
           <ScrollAreaPrimitive.Thumb className="relative flex-1 rounded-full bg-white/30 hover:bg-white/50" />
         </ScrollAreaPrimitive.Scrollbar>
         <ScrollAreaPrimitive.Scrollbar
           orientation="horizontal"
-          className="flex flex-col touch-none select-none transition-colors h-2.5 border-t border-t-transparent p-[1px] hover:bg-black/10 z-20"
+          className="flex flex-col touch-none select-none transition-colors h-4 border-t border-t-transparent p-[2px] hover:bg-black/10 z-20"
         >
           <ScrollAreaPrimitive.Thumb className="relative flex-1 rounded-full bg-white/30 hover:bg-white/50" />
         </ScrollAreaPrimitive.Scrollbar>

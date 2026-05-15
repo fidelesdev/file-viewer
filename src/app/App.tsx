@@ -86,10 +86,6 @@ export function App() {
         onOpenChange={setOpen}
         name={name}
         extension={extension}
-        pdfViewerProps={{
-          viewMode: 'single',
-        }}
-        language="portuguese"
         url={url}
       />
     </div>
