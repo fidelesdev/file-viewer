@@ -91,7 +91,7 @@ export function ViewFile({
 
     return (
       <Suspense
-        fallback={<LoaderCircle className="animate-spin w-10 h-10 text-white" />}
+        fallback={<LoaderCircle className="animate-spin size-10 text-white" />}
       >
         <LazyPdfViewer
           url={url!}
@@ -107,7 +107,7 @@ export function ViewFile({
 
     return (
       <Suspense
-        fallback={<LoaderCircle className="animate-spin w-10 h-10 text-white" />}
+        fallback={<LoaderCircle className="animate-spin size-10 text-white" />}
       >
         <LazyImageViewer url={url!} name={name} language={language} />
       </Suspense>
@@ -179,7 +179,7 @@ export function ViewFile({
                         aria-label={t.viewFile.closeAriaLabel}
                         className="cursor-pointer rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-white focus-visible:ring-offset-0 disabled:pointer-events-none"
                       >
-                        <X className="w-7 h-7" aria-hidden />
+                        <X className="size-7" aria-hidden />
                       </button>
                     </Dialog.Close>
                     <Dialog.Title asChild>
@@ -195,7 +195,7 @@ export function ViewFile({
                         className="cursor-pointer rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-white focus-visible:ring-offset-0"
                         aria-label={t.viewFile.printAriaLabel}
                       >
-                        <Printer className="w-6 h-6" aria-hidden />
+                        <Printer className="size-6" aria-hidden />
                       </button>
                       <button
                         type="button"
@@ -213,11 +213,11 @@ export function ViewFile({
                       >
                         {isDownloading ? (
                           <LoaderCircle
-                            className="w-6 h-6 animate-spin"
+                            className="size-6 animate-spin"
                             aria-hidden
                           />
                         ) : (
-                          <Download className="w-6 h-6" aria-hidden />
+                          <Download className="size-6" aria-hidden />
                         )}
                       </button>
                     </span>
@@ -225,7 +225,7 @@ export function ViewFile({
                 </div>
                 <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden text-white">
                   {!url || isLoading ? (
-                    <LoaderCircle className="w-10 h-10 animate-spin" />
+                    <LoaderCircle className="size-10 animate-spin" />
                   ) : isImage ? (
                     renderImage()
                   ) : isPdf ? (

@@ -1,5 +1,5 @@
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Scan, ZoomIn, ZoomOut } from 'lucide-react'
 import {
   ReactNode,
   useCallback,
@@ -112,8 +112,45 @@ export default function PdfViewer({
 
   const renderedHeights = useRef<Map<number, number>>(new Map())
 
-  // Sync input with page number
+  // --- Zoom State ---
+  const [instantZoom, setInstantZoom] = useState(1)
+  const [renderedZoom, setRenderedZoom] = useState(1)
+
+  // Reset zoom and clear cached heights when URL or view mode changes
   useEffect(() => {
+    setInstantZoom(1)
+    setRenderedZoom(1)
+    renderedHeights.current.clear()
+  }, [url, viewMode])
+
+  useEffect(() => {
+    if (instantZoom === renderedZoom) return
+    const timerId = window.setTimeout(() => {
+      setRenderedZoom(instantZoom)
+      renderedHeights.current.clear()
+    }, debounceDelay)
+    return () => window.clearTimeout(timerId)
+  }, [instantZoom, renderedZoom, debounceDelay])
+
+  // While the user navigates to a specific page via input/Enter/blur, freeze the displayed
+  // input value at the target page so it doesn't tick through every page crossed during the scroll.
+  const pendingInputPageRef = useRef<number | null>(null)
+  const pendingInputPageTimerRef = useRef<number | null>(null)
+
+  // Sync input with page number (skips while a programmatic navigation is in flight)
+  useEffect(() => {
+    const pending = pendingInputPageRef.current
+    if (pending !== null) {
+      if (pageNumber === pending) {
+        pendingInputPageRef.current = null
+        if (pendingInputPageTimerRef.current !== null) {
+          window.clearTimeout(pendingInputPageTimerRef.current)
+          pendingInputPageTimerRef.current = null
+        }
+        setInputPage(String(pageNumber))
+      }
+      return
+    }
     setInputPage(String(pageNumber))
   }, [pageNumber])
 
@@ -122,10 +159,13 @@ export default function PdfViewer({
     const updateSize = () => {
       if (containerRef.current) {
         const newSize = {
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
+          width: Number(containerRef.current.clientWidth.toFixed(2)),
+          height: Number(containerRef.current.clientHeight.toFixed(2)),
         }
-        setInstantSize(newSize)
+        setInstantSize((prev) => {
+          if (prev.width === newSize.width && prev.height === newSize.height) return prev
+          return newSize
+        })
         setRenderedSize((prev) =>
           prev.width === 0 && newSize.width > 0 ? newSize : prev,
         )
@@ -152,17 +192,40 @@ export default function PdfViewer({
     (container: { width: number; height: number }) => {
       if (!container.width || !container.height) {
         return {
-          width: container.width ? container.width : undefined,
-          height: container.height ? container.height : undefined,
+          width: container.width ? Number(container.width.toFixed(2)) : undefined,
+          height: container.height ? Number(container.height.toFixed(2)) : undefined,
         }
       }
 
-      // Before the first page reports its size, use the viewport so <Page> can mount
+      // Before the first page reports its size, use an approximation so <Page> can mount
       // and unlock aspect ratio (avoids height=undefined → nothing rendered).
       if (!pageOriginalSize.width || !pageOriginalSize.height) {
+        if (viewMode === 'continuous') {
+          let remToPx = 16
+          if (typeof document !== 'undefined') {
+            remToPx =
+              parseFloat(getComputedStyle(document.documentElement).fontSize) ||
+              16
+          }
+          const width = Number(Math.min(container.width, remToPx * 50).toFixed(2))
+          return {
+            width,
+            height: Number((width * 1.414).toFixed(2)), // Approximate A4 ratio
+          }
+        }
+        
+        // Single view mode: guess the dimensions based on A4 to avoid transition jank from full-width
+        const height = container.height
+        const width = Number((height / 1.414).toFixed(2))
+        if (width > container.width) {
+          return {
+            width: container.width,
+            height: Number((container.width * 1.414).toFixed(2))
+          }
+        }
         return {
-          width: container.width,
-          height: container.height,
+          width,
+          height: Number(height.toFixed(2)),
         }
       }
 
@@ -172,13 +235,13 @@ export default function PdfViewer({
       if (viewMode === 'single') {
         if (pageRatio > containerRatio) {
           const width = container.width
-          return { width, height: width / pageRatio }
+          return { width, height: Number((width / pageRatio).toFixed(2)) }
         } else {
           const height = container.height
-          return { height, width: height * pageRatio }
+          return { height, width: Number((height * pageRatio).toFixed(2)) }
         }
       } else {
-        // Continuous mode: width follows viewport up to 40rem, then scales height by page ratio
+        // Continuous mode: width follows viewport up to 50rem, then scales height by page ratio
         let remToPx = 16
         if (typeof document !== 'undefined') {
           remToPx =
@@ -186,8 +249,8 @@ export default function PdfViewer({
             16
         }
 
-        const width = Math.min(container.width, remToPx * 40)
-        return { width, height: width / pageRatio }
+        const width = Number(Math.min(container.width, remToPx * 50).toFixed(2))
+        return { width, height: Number((width / pageRatio).toFixed(2)) }
       }
     },
     [pageOriginalSize, viewMode],
@@ -203,23 +266,47 @@ export default function PdfViewer({
     [calculateDimensions, renderedSize],
   )
 
+  const zoomedRenderedDimensions = useMemo(() => {
+    return {
+      width: renderedDimensions.width
+        ? Number((renderedDimensions.width * renderedZoom).toFixed(2))
+        : undefined,
+      height: renderedDimensions.height
+        ? Number((renderedDimensions.height * renderedZoom).toFixed(2))
+        : undefined,
+    }
+  }, [renderedDimensions, renderedZoom])
+
+  const zoomedInstantDimensions = useMemo(() => {
+    return {
+      width: instantDimensions.width
+        ? Number((instantDimensions.width * instantZoom).toFixed(2))
+        : undefined,
+      height: instantDimensions.height
+        ? Number((instantDimensions.height * instantZoom).toFixed(2))
+        : undefined,
+    }
+  }, [instantDimensions, instantZoom])
+
   /** CSS scale from debounced canvas layout → current viewport (uniform, object-contain style). */
   const layoutScale = useMemo(() => {
-    const renderedWidth = renderedDimensions.width
-    const renderedHeight = renderedDimensions.height
-    const instantWidth = instantDimensions.width
-    const instantHeight = instantDimensions.height
+    const renderedWidth = zoomedRenderedDimensions.width
+    const renderedHeight = zoomedRenderedDimensions.height
+    const instantWidth = zoomedInstantDimensions.width
+    const instantHeight = zoomedInstantDimensions.height
     if (!renderedWidth || !instantWidth || !instantHeight) {
       return 1
     }
     if (!renderedHeight) {
-      return instantWidth / renderedWidth
+      return Number((instantWidth / renderedWidth).toFixed(4))
     }
-    return Math.min(
-      instantWidth / renderedWidth,
-      instantHeight / renderedHeight,
+    return Number(
+      Math.min(
+        instantWidth / renderedWidth,
+        instantHeight / renderedHeight,
+      ).toFixed(4),
     )
-  }, [instantDimensions, renderedDimensions])
+  }, [zoomedInstantDimensions, zoomedRenderedDimensions])
 
   // --- PDF Callbacks ---
   const handleDocumentLoadSuccess = ({
@@ -242,31 +329,35 @@ export default function PdfViewer({
   ) => {
     // Only use the first page's natural aspect ratio for global dimension scaling placeholders
     if (pageIndex === 1) {
-      setPageOriginalSize({ width: page.width, height: page.height })
+      setPageOriginalSize({
+        width: Number(page.width.toFixed(2)),
+        height: Number(page.height.toFixed(2)),
+      })
     }
 
     // Store exact height for this specific page when it unmounts into a placeholder
-    renderedHeights.current.set(pageIndex, page.height)
+    renderedHeights.current.set(pageIndex, Number(page.height.toFixed(2)))
   }
 
   // --- Page Navigation & Lazy Loading ---
+  // Note: input sync is handled by the dedicated useEffect (which respects the navigation lock).
   const setPage = useCallback(
     (newPage: number) => {
       setPageNumber(newPage)
-      setInputPage(String(newPage))
       onPageChange?.(newPage)
     },
     [onPageChange],
   )
 
   const previousPage = useCallback(() => {
+    if (pendingInputPageRef.current !== null) return
+
     const p = Math.max(pageNumber - 1, 1)
     if (viewMode === 'continuous') {
-      setPage(p)
       setTimeout(() => {
         pageRefs.current
           .get(p)
-          ?.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'start' })
+          ?.scrollIntoView({ behavior: 'smooth' as ScrollBehavior, block: 'start' })
       }, 10)
     } else {
       setPage(p)
@@ -274,13 +365,14 @@ export default function PdfViewer({
   }, [pageNumber, viewMode, setPage])
 
   const nextPage = useCallback(() => {
+    if (pendingInputPageRef.current !== null) return
+
     const p = Math.min(pageNumber + 1, numPages || 1)
     if (viewMode === 'continuous') {
-      setPage(p)
       setTimeout(() => {
         pageRefs.current
           .get(p)
-          ?.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'start' })
+          ?.scrollIntoView({ behavior: 'smooth' as ScrollBehavior, block: 'start' })
       }, 10)
     } else {
       setPage(p)
@@ -291,10 +383,22 @@ export default function PdfViewer({
     (p: number) => {
       const validPage = Math.max(1, Math.min(p, numPages || 1))
       if (viewMode === 'continuous') {
-        setPage(validPage)
+        // Lock the input value at the target page while the scroll is in progress,
+        // so the displayed number doesn't tick through intermediate pages.
+        pendingInputPageRef.current = validPage
+        setInputPage(String(validPage))
+        if (pendingInputPageTimerRef.current !== null) {
+          window.clearTimeout(pendingInputPageTimerRef.current)
+        }
+        // Safety fallback: if the user interrupts the scroll, release the lock after 750ms
+        pendingInputPageTimerRef.current = window.setTimeout(() => {
+          pendingInputPageRef.current = null
+          pendingInputPageTimerRef.current = null
+          setInputPage(String(pageNumberRef.current))
+        }, 750)
         // Small timeout to allow React to render the placeholder/page before scrolling
         setTimeout(() => {
-          pageRefs.current.get(validPage)?.scrollIntoView({ behavior: 'instant' as ScrollBehavior, block: 'start' })
+          pageRefs.current.get(validPage)?.scrollIntoView({ behavior: 'smooth' as ScrollBehavior, block: 'start' })
         }, 10)
       } else {
         setPage(validPage)
@@ -356,6 +460,79 @@ export default function PdfViewer({
     return () => observer.disconnect()
   }, [numPages, viewMode, setPage])
 
+  // --- Zoom Actions ---
+  const scrollRatioRef = useRef({ x: 0, y: 0 })
+  const zoomAnimFrameRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (zoomAnimFrameRef.current !== null) {
+        cancelAnimationFrame(zoomAnimFrameRef.current)
+      }
+    }
+  }, [])
+
+  const preserveScrollPosition = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    // Calculate the center point of the current viewport relative to the total scrollable content
+    const centerY = container.scrollTop + container.clientHeight / 2
+    const ratioY = container.scrollHeight > 0 ? centerY / container.scrollHeight : 0
+
+    const centerX = container.scrollLeft + container.clientWidth / 2
+    const ratioX = container.scrollWidth > 0 ? centerX / container.scrollWidth : 0
+
+    scrollRatioRef.current = { x: ratioX, y: ratioY }
+
+    if (zoomAnimFrameRef.current !== null) {
+      cancelAnimationFrame(zoomAnimFrameRef.current)
+    }
+
+    const startTime = performance.now()
+    const duration = 250 // slightly longer than CSS transition (200ms) to ensure it catches the end
+
+    const step = (time: number) => {
+      const currentContainer = containerRef.current
+      if (!currentContainer) return
+
+      // Find the new center point based on the updated scrollHeight/Width
+      const newCenterY = currentContainer.scrollHeight * scrollRatioRef.current.y
+      const newCenterX = currentContainer.scrollWidth * scrollRatioRef.current.x
+
+      // Adjust scrollTop/Left so that the new center point is in the middle of the viewport
+      currentContainer.scrollTop = newCenterY - currentContainer.clientHeight / 2
+      currentContainer.scrollLeft = newCenterX - currentContainer.clientWidth / 2
+
+      if (time - startTime < duration) {
+        zoomAnimFrameRef.current = requestAnimationFrame(step)
+      } else {
+        zoomAnimFrameRef.current = null
+      }
+    }
+
+    zoomAnimFrameRef.current = requestAnimationFrame(step)
+  }, [])
+
+  const handleZoomIn = useCallback(() => {
+    preserveScrollPosition()
+    setInstantZoom((prev) => Math.min(prev * 1.15, 8))
+  }, [preserveScrollPosition])
+
+  const handleZoomOut = useCallback(() => {
+    preserveScrollPosition()
+    setInstantZoom((prev) => Math.max(prev / 1.15, 0.5))
+  }, [preserveScrollPosition])
+
+  const handleZoomReset = useCallback(() => {
+    preserveScrollPosition()
+    setInstantZoom(1)
+  }, [preserveScrollPosition])
+
+  const zoomOutDisabled = instantZoom <= 0.501
+  const zoomInDisabled = instantZoom >= 7.99
+  const fitDisabled = Math.abs(instantZoom - 1) < 0.01
+
   // --- Render Pagination ---
   const renderPaginationElement = () => {
     if (renderPagination === null || numPages <= 1) return null
@@ -378,34 +555,41 @@ export default function PdfViewer({
     // Default pagination
     const paginationBody = (
       <>
-        <span>{pdfT.pageLabel}</span>
-        {viewMode === 'single' ? (
-          <div className="bg-black/20 rounded px-1 flex items-center justify-center">
-            <input
-              type="text"
-              inputMode="numeric"
-              value={inputPage}
-              onChange={(event) => setInputPage(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  const p = parseInt(inputPage, 10)
-                  if (!isNaN(p)) goToPage(p)
-                }
-              }}
-              onBlur={() => {
+        <div className="bg-black/20 rounded px-1 flex items-center justify-center">
+          <input
+            type="text"
+            inputMode="numeric"
+            value={inputPage}
+            onChange={(event) => setInputPage(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
                 const p = parseInt(inputPage, 10)
                 if (!isNaN(p)) goToPage(p)
-                else setInputPage(String(pageNumber))
-              }}
-              className="w-10 bg-transparent text-center focus:outline-none transition-colors"
-              aria-label={resolveFormattedMessage(pdfT.pageInputAriaLabel, {
-                value: inputPage,
-              })}
-            />
-          </div>
-        ) : (
-          <span className="px-1">{pageNumber}</span>
-        )}
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault()
+                const p = parseInt(inputPage, 10)
+                if (!isNaN(p)) {
+                  setInputPage(String(Math.min(p + 1, numPages)))
+                }
+              } else if (event.key === 'ArrowDown') {
+                event.preventDefault()
+                const p = parseInt(inputPage, 10)
+                if (!isNaN(p)) {
+                  setInputPage(String(Math.max(p - 1, 1)))
+                }
+              }
+            }}
+            onBlur={() => {
+              const p = parseInt(inputPage, 10)
+              if (!isNaN(p)) goToPage(p)
+              else setInputPage(String(pageNumber))
+            }}
+            className="w-10 bg-transparent text-center focus:outline-none transition-colors"
+            aria-label={resolveFormattedMessage(pdfT.pageInputAriaLabel, {
+              value: inputPage,
+            })}
+          />
+        </div>
         <span className="opacity-60 mx-1">/</span>
         <span>{numPages}</span>
       </>
@@ -426,11 +610,7 @@ export default function PdfViewer({
           </ViewerToolbarIconButton>
         </FileViewerTooltip>
 
-        <ViewerToolbarDivider />
-
         {paginationBody}
-
-        <ViewerToolbarDivider />
 
         <FileViewerTooltip
           content={pdfT.nextPageTooltip}
@@ -444,9 +624,53 @@ export default function PdfViewer({
             <ChevronRight className="h-5 w-5" aria-hidden />
           </ViewerToolbarIconButton>
         </FileViewerTooltip>
+
+        <ViewerToolbarDivider />
+
+        <FileViewerTooltip
+          content={pdfT.zoomOutTooltip}
+          disabled={zoomOutDisabled}
+        >
+          <ViewerToolbarIconButton
+            disabled={zoomOutDisabled}
+            onClick={handleZoomOut}
+            aria-label={pdfT.zoomOutAriaLabel}
+          >
+            <ZoomOut className="h-5 w-5" />
+          </ViewerToolbarIconButton>
+        </FileViewerTooltip>
+
+        <FileViewerTooltip
+          content={pdfT.fitWidthTooltip}
+          disabled={fitDisabled}
+        >
+          <ViewerToolbarIconButton
+            disabled={fitDisabled}
+            onClick={handleZoomReset}
+            aria-label={pdfT.fitWidthAriaLabel}
+          >
+            <Scan className="h-5 w-5" />
+          </ViewerToolbarIconButton>
+        </FileViewerTooltip>
+
+        <FileViewerTooltip
+          content={pdfT.zoomInTooltip}
+          disabled={zoomInDisabled}
+        >
+          <ViewerToolbarIconButton
+            disabled={zoomInDisabled}
+            onClick={handleZoomIn}
+            aria-label={pdfT.zoomInAriaLabel}
+          >
+            <ZoomIn className="h-5 w-5" />
+          </ViewerToolbarIconButton>
+        </FileViewerTooltip>
       </ViewerFloatingToolbar>
     )
   }
+
+  // console.log('zoomedRenderedDimensions', zoomedRenderedDimensions)
+  console.log('zoomedInstantDimensions', zoomedInstantDimensions)
 
   return (
     <FileViewerTooltipProvider>
@@ -461,8 +685,8 @@ export default function PdfViewer({
           <div
             className={
               viewMode === 'continuous'
-                ? 'flex min-h-full w-full flex-col items-center gap-4 py-4'
-                : 'flex h-full min-h-full w-full items-center justify-center'
+                ? 'flex min-h-full min-w-full flex-col'
+                : 'flex min-h-full min-w-full'
             }
           >
             <Document
@@ -472,19 +696,19 @@ export default function PdfViewer({
               loading={renderLoading}
               className={
                 viewMode === 'continuous'
-                  ? 'flex w-full flex-col items-center gap-4'
-                  : 'flex h-full min-h-full w-full items-center justify-center'
+                  ? 'flex w-full flex-col gap-4'
+                  : 'flex min-w-full min-h-full'
               }
             >
               {viewMode === 'single' &&
-              renderedDimensions.width &&
-              instantDimensions.width &&
-              instantDimensions.height ? (
+              zoomedRenderedDimensions.width &&
+              zoomedInstantDimensions.width &&
+              zoomedInstantDimensions.height ? (
                 <div
-                  className={`flex max-h-full max-w-full shrink-0 items-center justify-center overflow-hidden ${pageClassName}`}
+                  className={`relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''} ${pageClassName}`}
                   style={{
-                    width: instantDimensions.width,
-                    height: instantDimensions.height,
+                    width: zoomedInstantDimensions.width,
+                    height: zoomedInstantDimensions.height,
                   }}
                 >
                   <div
@@ -499,7 +723,7 @@ export default function PdfViewer({
                       renderAnnotationLayer={renderAnnotationLayer}
                       className="flex h-full w-full shrink flex-1 items-center justify-center !bg-transparent [&_canvas]:!h-full [&_canvas]:!w-full"
                       renderMode="canvas"
-                      width={renderedDimensions.width}
+                      width={zoomedRenderedDimensions.width}
                       loading={null}
                     />
                   </div>
@@ -508,9 +732,9 @@ export default function PdfViewer({
 
               {viewMode === 'continuous' &&
                 numPages > 0 &&
-                renderedDimensions.width &&
-                renderedDimensions.height &&
-                instantDimensions.width &&
+                zoomedRenderedDimensions.width &&
+                zoomedRenderedDimensions.height &&
+                zoomedInstantDimensions.width &&
                 Array.from(new Array(numPages), (_, index) => {
                   const p = index + 1
 
@@ -519,11 +743,15 @@ export default function PdfViewer({
 
                   const renderedPageHeight =
                     renderedHeights.current.get(p) ??
-                    renderedDimensions.height ??
+                    zoomedRenderedDimensions.height ??
                     0
 
-                  const slotWidth = instantDimensions.width
-                  const slotHeight = renderedPageHeight * layoutScale
+                  const slotWidth = zoomedInstantDimensions.width
+                    ? Number(zoomedInstantDimensions.width.toFixed(2))
+                    : undefined
+                  const slotHeight = Number(
+                    (renderedPageHeight * layoutScale).toFixed(2),
+                  )
 
                   const placeholderStyle =
                     !isInWindow && slotHeight
@@ -548,8 +776,8 @@ export default function PdfViewer({
                       style={placeholderStyle}
                       className={
                         isInWindow
-                          ? `relative flex shrink-0 items-center justify-center overflow-hidden ${pageClassName}`
-                          : 'relative flex shrink-0 items-center justify-center overflow-hidden'
+                          ? `relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''} ${pageClassName}`
+                          : `relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''}`
                       }
                     >
                       {isInWindow ? (
@@ -563,7 +791,7 @@ export default function PdfViewer({
                             renderAnnotationLayer={renderAnnotationLayer}
                             className="flex h-full w-full shrink flex-1 items-center justify-center !bg-transparent [&_canvas]:!h-full [&_canvas]:!w-full"
                             renderMode="canvas"
-                            width={renderedDimensions.width}
+                            width={zoomedRenderedDimensions.width}
                             loading={null}
                           />
                         </div>

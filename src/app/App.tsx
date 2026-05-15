@@ -87,7 +87,7 @@ export function App() {
         name={name}
         extension={extension}
         pdfViewerProps={{
-          viewMode: 'continuous',
+          viewMode: 'single',
         }}
         language="portuguese"
         url={url}

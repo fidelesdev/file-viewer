@@ -19,7 +19,7 @@ export function ViewerFloatingToolbar({
 }
 
 export function ViewerToolbarDivider() {
-  return <div className="mx-1 h-6 w-px bg-white/20" aria-hidden />
+  return <div className="mx-1 h-full w-px bg-white/20" aria-hidden />
 }
 
 export function ViewerToolbarIconButton({

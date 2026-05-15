@@ -33,6 +33,12 @@ export interface PdfViewerTranslations {
   nextPageAriaLabel: string
   previousPageTooltip: string
   nextPageTooltip: string
+  zoomOutAriaLabel: string
+  fitWidthAriaLabel: string
+  zoomInAriaLabel: string
+  zoomOutTooltip: string
+  fitWidthTooltip: string
+  zoomInTooltip: string
 }
 
 export interface FileViewerTranslations {
@@ -69,6 +75,12 @@ export const fileViewerTranslationsByLanguage: Record<
       nextPageAriaLabel: 'Next page',
       previousPageTooltip: 'Previous page',
       nextPageTooltip: 'Next page',
+      zoomOutAriaLabel: 'Zoom out',
+      fitWidthAriaLabel: 'Fit width',
+      zoomInAriaLabel: 'Zoom in',
+      zoomOutTooltip: 'Zoom out',
+      fitWidthTooltip: 'Fit width',
+      zoomInTooltip: 'Zoom in',
     },
   },
   portuguese: {
@@ -95,6 +107,12 @@ export const fileViewerTranslationsByLanguage: Record<
       nextPageAriaLabel: 'Próxima página',
       previousPageTooltip: 'Página anterior',
       nextPageTooltip: 'Próxima página',
+      zoomOutAriaLabel: 'Diminuir zoom',
+      fitWidthAriaLabel: 'Ajustar à largura',
+      zoomInAriaLabel: 'Aumentar zoom',
+      zoomOutTooltip: 'Diminuir zoom',
+      fitWidthTooltip: 'Ajustar à largura',
+      zoomInTooltip: 'Aumentar zoom',
     },
   },
 }
