@@ -1,0 +1,29 @@
+/**
+ * PDF viewer overrides (selection + layout sync).
+ * Requires react-pdf TextLayer.css to be loaded first.
+ */
+
+/* Mozilla-style selection: highlight only, no visible glyph fill */
+.pdf-viewer .textLayer ::-moz-selection {
+  background: rgba(0, 0, 255, 0.25);
+  background: color-mix(in srgb, AccentColor, transparent 75%);
+  color: transparent;
+}
+
+.pdf-viewer .textLayer ::selection {
+  background: rgba(0, 0, 255, 0.25);
+  background: color-mix(in srgb, AccentColor, transparent 75%);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.pdf-viewer .textLayer br::-moz-selection,
+.pdf-viewer .textLayer br::selection {
+  background: transparent;
+}
+
+/* Hide misaligned text layer while container/canvas size is catching up */
+.pdf-viewer [data-layout-syncing='true'] .textLayer {
+  opacity: 0;
+  pointer-events: none;
+}

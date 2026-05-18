@@ -11,6 +11,12 @@ import {
   ViewerToolbarDivider,
   ViewerToolbarIconButton,
 } from './components/ViewerToolbar'
+import { getFileViewerDefaults, resolveImageViewerProps } from './config'
+import type {
+  ImageViewerClassNames,
+  ImageViewerStyles,
+} from './customization-types'
+import { useAutoHide } from './hooks/useAutoHide'
 import {
   FileViewerTooltip,
   FileViewerTooltipProvider,
@@ -18,6 +24,20 @@ import {
 import { calculateMultiplicativeZoom } from './utils/zoom-utils'
 import { clampPanToImageBounds } from './utils/image-viewport-clamp'
 import { getFileViewerTranslations, type ViewerLanguage } from './translations'
+import { mergeClassNames } from './utils/merge-slot-props'
+import { resolveOption } from './utils/resolve-options'
+
+export type { ImageViewerClassNames, ImageViewerStyles } from './customization-types'
+
+const IMAGE_ROOT_DEFAULT =
+  'relative flex size-full items-center justify-center overflow-hidden'
+
+const IMAGE_LOADER_OVERLAY_DEFAULT =
+  'absolute inset-0 z-30 flex items-center justify-center bg-neutral-950/40'
+
+const IMAGE_LOADER_ICON_DEFAULT = 'size-10 animate-spin text-white'
+
+const IMAGE_IMG_DEFAULT = 'max-h-[calc(100dvh-10rem)] max-w-full shadow'
 
 const SCALE_EPSILON = 0.012
 const FIT_AT_ONE_EPSILON = 0.018
@@ -28,10 +48,40 @@ export interface ImageViewerProps {
   url: string
   name: string
   language?: ViewerLanguage
+  classNames?: ImageViewerClassNames
+  styles?: ImageViewerStyles
 }
 
-export default function ImageViewer({ url, name, language = 'english' }: ImageViewerProps) {
+export default function ImageViewer({
+  url,
+  name,
+  language: languageProp,
+  classNames: classNamesProp,
+  styles: stylesProp,
+}: ImageViewerProps) {
+  const resolved = resolveImageViewerProps({
+    classNames: classNamesProp,
+    styles: stylesProp,
+  })
+  const classNames = resolved.classNames
+  const styles = resolved.styles
+
+  const language = resolveOption(
+    languageProp,
+    getFileViewerDefaults().language,
+    'english',
+  )
+
   const imageT = getFileViewerTranslations(language).imageViewer
+  const autoHideDefaults = getFileViewerDefaults().autoHide
+
+  const imageClassName = (
+    key: keyof ImageViewerClassNames,
+    builtIn: string,
+    extra?: string,
+  ) => mergeClassNames(builtIn, classNames?.[key], extra)
+
+  const imageStyle = (key: keyof ImageViewerStyles) => styles?.[key]
   const [maxZoom, setMaxZoom] = useState(16)
   const [isPanning, setIsPanning] = useState(false)
   const [hasImageLoaded, setHasImageLoaded] = useState(false)
@@ -43,8 +93,16 @@ export default function ImageViewer({ url, name, language = 'english' }: ImageVi
   const minZoom = 0.5
   const scaleRef = useRef<HTMLSpanElement>(null)
   const transformRef = useRef<ReactZoomPanPinchContentRef>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
   const wheelClampTimerRef = useRef<number | null>(null)
   const libraryChangeUnsubscribeRef = useRef<(() => void) | null>(null)
+
+  const isToolbarVisible = useAutoHide(toolbarRef, containerRef, {
+    proximityThreshold: autoHideDefaults?.proximityThreshold,
+    timeout: autoHideDefaults?.timeout,
+    activityDeps: [viewport.scale],
+  })
 
   const updateScaleText = useCallback((scale: number) => {
     if (scaleRef.current) {
@@ -191,16 +249,19 @@ export default function ImageViewer({ url, name, language = 'english' }: ImageVi
   return (
     <FileViewerTooltipProvider>
       <div
-        className="relative flex size-full items-center justify-center overflow-hidden"
+        ref={containerRef}
+        className={imageClassName('root', IMAGE_ROOT_DEFAULT)}
+        style={imageStyle('root')}
         onWheel={handleWheelZoom}
       >
         {!hasImageLoaded ? (
           <div
-            className="absolute inset-0 z-30 flex items-center justify-center bg-neutral-950/40"
+            className={imageClassName('loader', IMAGE_LOADER_OVERLAY_DEFAULT)}
+            style={imageStyle('loader')}
             aria-busy
             aria-live="polite"
           >
-            <LoaderCircle className="size-10 animate-spin text-white" aria-hidden />
+            <LoaderCircle className={IMAGE_LOADER_ICON_DEFAULT} aria-hidden />
           </div>
         ) : null}
 
@@ -228,11 +289,21 @@ export default function ImageViewer({ url, name, language = 'english' }: ImageVi
                   alt={name}
                   onLoad={handleImageLoad}
                   onError={handleImageError}
-                  className="max-h-[calc(100dvh-10rem)] max-w-full shadow"
+                  className={imageClassName('image', IMAGE_IMG_DEFAULT)}
+                  style={imageStyle('image')}
                 />
               </TransformComponent>
 
-              <ViewerFloatingToolbar>
+              <ViewerFloatingToolbar
+                ref={toolbarRef}
+                className={mergeClassNames(
+                  imageClassName('toolbar', ''),
+                  isToolbarVisible
+                    ? 'opacity-100 pointer-events-auto'
+                    : 'opacity-0 pointer-events-none',
+                )}
+                style={imageStyle('toolbar')}
+              >
                 <span
                   ref={scaleRef}
                   className="w-12 text-center text-sm font-medium text-white/90"

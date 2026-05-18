@@ -1,3 +1,5 @@
+import { getFileViewerDefaults } from './config'
+
 /** Plain string, or a function that receives structured values for formatting. */
 export type FormattableMessage<P extends Record<string, unknown>> =
   | string
@@ -12,8 +14,13 @@ export type ViewerLanguage = 'english' | 'portuguese'
 export interface ViewFileTranslations {
   closeAriaLabel: string
   printAriaLabel: string
+  printTooltip: string
   downloadAriaLabel: string
+  downloadTooltip: string
   downloadInProgressAriaLabel: string
+  downloadInProgressTooltip: string
+  openInModalAriaLabel: string
+  openInModalTooltip: string
   unsupportedFileType: FormattableMessage<UnsupportedFileTypeParams>
 }
 
@@ -47,6 +54,12 @@ export interface FileViewerTranslations {
   pdfViewer: PdfViewerTranslations
 }
 
+export type DeepPartialFileViewerTranslations = {
+  viewFile?: Partial<ViewFileTranslations>
+  imageViewer?: Partial<ImageViewerTranslations>
+  pdfViewer?: Partial<PdfViewerTranslations>
+}
+
 export const fileViewerTranslationsByLanguage: Record<
   ViewerLanguage,
   FileViewerTranslations
@@ -55,8 +68,13 @@ export const fileViewerTranslationsByLanguage: Record<
     viewFile: {
       closeAriaLabel: 'Close',
       printAriaLabel: 'Print',
+      printTooltip: 'Print',
       downloadAriaLabel: 'Download',
+      downloadTooltip: 'Download',
       downloadInProgressAriaLabel: 'Downloading…',
+      downloadInProgressTooltip: 'Downloading…',
+      openInModalAriaLabel: 'Open in full screen',
+      openInModalTooltip: 'Open in full screen',
       unsupportedFileType: ({ extension }) =>
         `No preview is available for file type "${extension}".`,
     },
@@ -87,8 +105,13 @@ export const fileViewerTranslationsByLanguage: Record<
     viewFile: {
       closeAriaLabel: 'Fechar',
       printAriaLabel: 'Imprimir',
+      printTooltip: 'Imprimir',
       downloadAriaLabel: 'Transferir',
+      downloadTooltip: 'Transferir',
       downloadInProgressAriaLabel: 'A transferir…',
+      downloadInProgressTooltip: 'A transferir…',
+      openInModalAriaLabel: 'Visualizar em tela cheia',
+      openInModalTooltip: 'Visualizar em tela cheia',
       unsupportedFileType: ({ extension }) =>
         `Ainda não existem visualizações para arquivos do tipo "${extension}".`,
     },
@@ -121,10 +144,33 @@ export const fileViewerTranslationsByLanguage: Record<
 export const defaultFileViewerTranslations: FileViewerTranslations =
   fileViewerTranslationsByLanguage.english
 
+export function applyTranslationOverlay(
+  builtIn: FileViewerTranslations,
+  overlay: DeepPartialFileViewerTranslations | undefined,
+): FileViewerTranslations {
+  if (!overlay) return builtIn
+
+  return {
+    viewFile: { ...builtIn.viewFile, ...overlay.viewFile },
+    imageViewer: { ...builtIn.imageViewer, ...overlay.imageViewer },
+    pdfViewer: { ...builtIn.pdfViewer, ...overlay.pdfViewer },
+  } as FileViewerTranslations
+}
+
 export function getFileViewerTranslations(
   language: ViewerLanguage,
 ): FileViewerTranslations {
-  return fileViewerTranslationsByLanguage[language]
+  const builtIn = fileViewerTranslationsByLanguage[language]
+  const overlay = getFileViewerDefaults().translations?.[language]
+
+  if (!overlay) {
+    return builtIn
+  }
+
+  return applyTranslationOverlay(
+    builtIn,
+    overlay as DeepPartialFileViewerTranslations,
+  )
 }
 
 export function resolveFormattedMessage<P extends Record<string, unknown>>(

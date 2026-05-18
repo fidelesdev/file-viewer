@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
+import './pdf-viewer.css'
 import {
   FileViewerTooltip,
   FileViewerTooltipProvider,
@@ -18,11 +19,45 @@ import {
   ViewerToolbarDivider,
   ViewerToolbarIconButton,
 } from './components/ViewerToolbar'
+import { useAutoHide } from './hooks/useAutoHide'
+import { getFileViewerDefaults, resolvePdfViewerProps } from './config'
+import type { PdfViewerClassNames, PdfViewerStyles } from './customization-types'
 import {
   getFileViewerTranslations,
   resolveFormattedMessage,
   type ViewerLanguage,
 } from './translations'
+import { resolveOption } from './utils/resolve-options'
+import { mergeClassNames } from './utils/merge-slot-props'
+
+export type { PdfViewerClassNames, PdfViewerStyles } from './customization-types'
+
+const PDF_VIEWER_ROOT_DEFAULT =
+  'pdf-viewer flex flex-col items-center gap-4 w-full h-full max-h-full overflow-hidden relative'
+
+const PDF_SCROLL_AREA_DEFAULT =
+  'flex w-full flex-1 relative overflow-hidden'
+
+const PDF_SCROLL_VIEWPORT_DEFAULT =
+  'w-full h-full rounded-[inherit] [&>div]:min-h-full'
+
+const PDF_SCROLLBAR_VERTICAL_DEFAULT =
+  'flex touch-none select-none transition-colors w-4 border-l border-l-transparent p-[2px] hover:bg-black/10 z-20'
+
+const PDF_SCROLLBAR_HORIZONTAL_DEFAULT =
+  'flex flex-col touch-none select-none transition-colors h-4 border-t border-t-transparent p-[2px] hover:bg-black/10 z-20'
+
+const PDF_SCROLLBAR_THUMB_DEFAULT =
+  'relative flex-1 rounded-full bg-neutral-500/50 hover:bg-neutral-500/80'
+
+const PDF_PAGE_DEFAULT =
+  'relative flex shrink-0 items-center justify-center overflow-hidden m-auto'
+
+const PDF_PAGE_INNER_DEFAULT =
+  'relative flex h-full w-full items-center justify-center overflow-hidden bg-white shadow-lg'
+
+const PDF_PAGE_INPUT_DEFAULT =
+  'w-10 bg-transparent text-center focus:outline-none transition-colors'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -50,6 +85,8 @@ export interface PdfViewerProps {
 
   // Resize: debounced size used for <Page width=…> (canvas); instant size drives CSS scale while resizing
   debounceDelay?: number // default: 300ms
+  /** Debounce before re-rendering canvas at new resolution after zoom (default: 500ms). */
+  zoomDebounceDelay?: number
 
   // Rendering
   renderTextLayer?: boolean // default: true
@@ -57,7 +94,7 @@ export interface PdfViewerProps {
   renderLoading?: ReactNode
 
   // Lazy loading (continuous mode)
-  preloadAhead?: number // default: 5
+  preloadAhead?: number // default: 1
 
   // Callbacks
   onLoadSuccess?: (numPages: number) => void
@@ -75,33 +112,64 @@ export interface PdfViewerProps {
   // Styling
   className?: string
   pageClassName?: string
+  classNames?: PdfViewerClassNames
+  styles?: PdfViewerStyles
 }
 
-export default function PdfViewer({
-  url,
-  viewMode = 'continuous',
-  debounceDelay = 300,
-  renderTextLayer = true,
-  renderAnnotationLayer = true,
-  renderLoading = null,
-  preloadAhead = 1,
-  onLoadSuccess,
-  onLoadError,
-  onPageChange,
-  defaultPage = 1,
-  renderPagination,
-  paginationClassName,
-  language = 'english',
-  className = '',
-  pageClassName = '',
-}: PdfViewerProps) {
+export default function PdfViewer(props: PdfViewerProps) {
+  const { url, language: languageProp, ...instanceProps } = props
+  const resolved = resolvePdfViewerProps(instanceProps)
+
+  const viewMode = resolved.viewMode ?? 'continuous'
+  const debounceDelay = resolved.debounceDelay ?? 300
+  const zoomDebounceDelay = resolved.zoomDebounceDelay ?? 500
+  const renderTextLayer = resolved.renderTextLayer ?? true
+  const renderAnnotationLayer = resolved.renderAnnotationLayer ?? true
+  const renderLoading = resolved.renderLoading ?? null
+  const preloadAhead = resolved.preloadAhead ?? 1
+  const onLoadSuccess = resolved.onLoadSuccess
+  const onLoadError = resolved.onLoadError
+  const onPageChange = resolved.onPageChange
+  const defaultPage = resolved.defaultPage ?? 1
+  const renderPagination = resolved.renderPagination
+  const paginationClassName = resolved.paginationClassName
+  const className = resolved.className
+  const pageClassName = resolved.pageClassName
+  const classNames = resolved.classNames
+  const styles = resolved.styles
+
+  const language = resolveOption(
+    languageProp,
+    getFileViewerDefaults().language,
+    'english',
+  )
+
   const pdfT = getFileViewerTranslations(language).pdfViewer
+
+  const autoHideDefaults = getFileViewerDefaults().autoHide
+
+  const pdfClassName = (
+    key: keyof PdfViewerClassNames,
+    builtIn: string,
+    extra?: string,
+  ) =>
+    mergeClassNames(
+      builtIn,
+      classNames?.[key],
+      key === 'root' ? className : undefined,
+      key === 'page' ? pageClassName : undefined,
+      key === 'pagination' ? paginationClassName : undefined,
+      extra,
+    )
+
+  const pdfStyle = (key: keyof PdfViewerStyles) => styles?.[key]
 
   const [numPages, setNumPages] = useState<number>(0)
   const [pageNumber, setPageNumber] = useState<number>(defaultPage)
   const [visibleRange, setVisibleRange] = useState({ start: defaultPage, end: defaultPage })
   const [inputPage, setInputPage] = useState<string>(String(defaultPage))
   const containerRef = useRef<HTMLDivElement>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
   const [instantSize, setInstantSize] = useState({ width: 0, height: 0 })
@@ -116,6 +184,12 @@ export default function PdfViewer({
   // --- Zoom State ---
   const [instantZoom, setInstantZoom] = useState(1)
   const [renderedZoom, setRenderedZoom] = useState(1)
+
+  const isToolbarVisible = useAutoHide(toolbarRef, containerRef, {
+    proximityThreshold: autoHideDefaults?.proximityThreshold,
+    timeout: autoHideDefaults?.timeout,
+    activityDeps: [pageNumber, instantZoom],
+  })
 
   // Keep track of whether the user has interacted with zoom yet. 
   // If not, we don't apply CSS transitions to avoid initial layout jank from placeholders.
@@ -134,9 +208,9 @@ export default function PdfViewer({
     const timerId = window.setTimeout(() => {
       setRenderedZoom(instantZoom)
       renderedHeights.current.clear()
-    }, debounceDelay)
+    }, zoomDebounceDelay)
     return () => window.clearTimeout(timerId)
-  }, [instantZoom, renderedZoom, debounceDelay])
+  }, [instantZoom, renderedZoom, zoomDebounceDelay])
 
   // While the user navigates to a specific page via input/Enter/blur, freeze the displayed
   // input value at the target page so it doesn't tick through every page crossed during the scroll.
@@ -203,63 +277,28 @@ export default function PdfViewer({
         }
       }
 
+      let remToPx = 16
+      if (typeof document !== 'undefined') {
+        remToPx =
+          parseFloat(getComputedStyle(document.documentElement).fontSize) ||
+          16
+      }
+
+      const width = Math.trunc(Math.min(container.width, remToPx * 50))
+
       // Before the first page reports its size, use an approximation so <Page> can mount
       // and unlock aspect ratio (avoids height=undefined → nothing rendered).
       if (!pageOriginalSize.width || !pageOriginalSize.height) {
-        if (viewMode === 'continuous') {
-          let remToPx = 16
-          if (typeof document !== 'undefined') {
-            remToPx =
-              parseFloat(getComputedStyle(document.documentElement).fontSize) ||
-              16
-          }
-          const width = Math.trunc(Math.min(container.width, remToPx * 50))
-          return {
-            width,
-            height: Math.trunc(width * 1.414), // Approximate A4 ratio
-          }
-        }
-        
-        // Single view mode: guess the dimensions based on A4 to avoid transition jank from full-width
-        const height = container.height
-        const width = Math.trunc(height / 1.414)
-        if (width > container.width) {
-          return {
-            width: container.width,
-            height: Math.trunc(container.width * 1.414)
-          }
-        }
         return {
           width,
-          height: Math.trunc(height),
+          height: Math.trunc(width * 1.414), // Approximate A4 ratio
         }
       }
 
-      const containerRatio = container.width / container.height
       const pageRatio = pageOriginalSize.width / pageOriginalSize.height
-
-      if (viewMode === 'single') {
-        if (pageRatio > containerRatio) {
-          const width = container.width
-          return { width, height: Math.trunc(width / pageRatio) }
-        } else {
-          const height = container.height
-          return { height, width: Math.trunc(height * pageRatio) }
-        }
-      } else {
-        // Continuous mode: width follows viewport up to 50rem, then scales height by page ratio
-        let remToPx = 16
-        if (typeof document !== 'undefined') {
-          remToPx =
-            parseFloat(getComputedStyle(document.documentElement).fontSize) ||
-            16
-        }
-
-        const width = Math.trunc(Math.min(container.width, remToPx * 50))
-        return { width, height: Math.trunc(width / pageRatio) }
-      }
+      return { width, height: Math.trunc(width / pageRatio) }
     },
-    [pageOriginalSize, viewMode],
+    [pageOriginalSize],
   )
 
   const instantDimensions = useMemo(
@@ -313,6 +352,23 @@ export default function PdfViewer({
       ).toFixed(4),
     )
   }, [zoomedInstantDimensions, zoomedRenderedDimensions])
+
+  const isLayoutSyncing = useMemo(() => {
+    if (instantZoom !== renderedZoom) return true
+    if (
+      instantSize.width !== renderedSize.width ||
+      instantSize.height !== renderedSize.height
+    ) {
+      return true
+    }
+    return Math.abs(layoutScale - 1) > 0.001
+  }, [
+    instantZoom,
+    renderedZoom,
+    instantSize,
+    renderedSize,
+    layoutScale,
+  ])
 
   // --- PDF Callbacks ---
   const handleDocumentLoadSuccess = ({
@@ -610,7 +666,8 @@ export default function PdfViewer({
               if (!isNaN(p)) goToPage(p)
               else setInputPage(String(pageNumber))
             }}
-            className="w-10 bg-transparent text-center focus:outline-none transition-colors"
+            className={pdfClassName('pageInput', PDF_PAGE_INPUT_DEFAULT)}
+            style={pdfStyle('pageInput')}
             aria-label={resolveFormattedMessage(pdfT.pageInputAriaLabel, {
               value: inputPage,
             })}
@@ -622,7 +679,16 @@ export default function PdfViewer({
     )
 
     return (
-      <ViewerFloatingToolbar className={paginationClassName || ''}>
+      <ViewerFloatingToolbar
+        ref={toolbarRef}
+        className={mergeClassNames(
+          pdfClassName('pagination', ''),
+          isToolbarVisible
+            ? 'opacity-100 pointer-events-auto'
+            : 'opacity-0 pointer-events-none',
+        )}
+        style={pdfStyle('pagination')}
+      >
         <FileViewerTooltip
           content={pdfT.previousPageTooltip}
           disabled={props.isFirstPage}
@@ -695,48 +761,54 @@ export default function PdfViewer({
     )
   }
 
+  const pageTransitionClass =
+    hasZoomedRef.current && pageOriginalSize.width
+      ? 'transition-all duration-200 ease-out'
+      : ''
 
   return (
     <FileViewerTooltipProvider>
       <div
-        className={`flex flex-col items-center gap-4 w-full h-full max-h-full overflow-hidden relative ${className}`}
+        className={pdfClassName('root', PDF_VIEWER_ROOT_DEFAULT)}
+        style={pdfStyle('root')}
       >
-        <ScrollAreaPrimitive.Root className="flex w-full flex-1 relative overflow-hidden">
+        <ScrollAreaPrimitive.Root
+          className={pdfClassName('scrollArea', PDF_SCROLL_AREA_DEFAULT)}
+          style={pdfStyle('scrollArea')}
+        >
         <ScrollAreaPrimitive.Viewport
           ref={containerRef}
-          className="w-full h-full rounded-[inherit] [&>div]:min-h-full"
+          className={pdfClassName('scrollViewport', PDF_SCROLL_VIEWPORT_DEFAULT)}
+          style={pdfStyle('scrollViewport')}
         >
-          <div
-            className={
-              viewMode === 'continuous'
-                ? 'flex min-h-full min-w-full flex-col'
-                : 'flex min-h-full min-w-full'
-            }
-          >
+          <div className="flex min-h-full min-w-full flex-col">
             <Document
               file={url}
               onLoadSuccess={handleDocumentLoadSuccess}
               onLoadError={handleDocumentLoadError}
               loading={renderLoading}
-              className={
-                viewMode === 'continuous'
-                  ? 'flex w-full flex-col gap-4'
-                  : 'flex min-w-full min-h-full'
-              }
+              className="flex w-full flex-col gap-4"
             >
               {viewMode === 'single' &&
               zoomedRenderedDimensions.width &&
               zoomedInstantDimensions.width &&
               zoomedInstantDimensions.height ? (
                 <div
-                  className={`relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${hasZoomedRef.current && pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''} ${pageClassName}`}
+                  data-layout-syncing={isLayoutSyncing ? 'true' : undefined}
+                  className={pdfClassName(
+                    'page',
+                    PDF_PAGE_DEFAULT,
+                    pageTransitionClass,
+                  )}
                   style={{
                     width: zoomedInstantDimensions.width,
                     height: zoomedInstantDimensions.height,
+                    ...pdfStyle('page'),
                   }}
                 >
                   <div
-                    className="relative flex h-full w-full items-center justify-center overflow-hidden bg-white shadow-lg"
+                    className={pdfClassName('pageInner', PDF_PAGE_INNER_DEFAULT)}
+                    style={pdfStyle('pageInner')}
                   >
                     <Page
                       pageNumber={pageNumber}
@@ -792,20 +864,27 @@ export default function PdfViewer({
                   return (
                     <div
                       key={`page_${p}`}
+                      data-layout-syncing={isLayoutSyncing ? 'true' : undefined}
                       data-page-number={p}
                       ref={(el) => {
                         if (el) pageRefs.current.set(p, el)
                         else pageRefs.current.delete(p)
                       }}
-                      style={placeholderStyle}
-                      className={
-                        isInWindow
-                          ? `relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${hasZoomedRef.current && pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''} ${pageClassName}`
-                          : `relative flex shrink-0 items-center justify-center overflow-hidden m-auto ${hasZoomedRef.current && pageOriginalSize.width ? 'transition-all duration-200 ease-out' : ''}`
-                      }
+                      className={pdfClassName(
+                        'page',
+                        PDF_PAGE_DEFAULT,
+                        pageTransitionClass,
+                      )}
+                      style={{ ...placeholderStyle, ...pdfStyle('page') }}
                     >
                       {isInWindow ? (
-                        <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-white shadow-lg">
+                        <div
+                          className={pdfClassName(
+                            'pageInner',
+                            PDF_PAGE_INNER_DEFAULT,
+                          )}
+                          style={pdfStyle('pageInner')}
+                        >
                           <Page
                             pageNumber={p}
                             onLoadSuccess={(page) =>
@@ -828,15 +907,26 @@ export default function PdfViewer({
         </ScrollAreaPrimitive.Viewport>
         <ScrollAreaPrimitive.Scrollbar
           orientation="vertical"
-          className="flex touch-none select-none transition-colors w-4 border-l border-l-transparent p-[2px] hover:bg-black/10 z-20"
+          className={pdfClassName('scrollbar', PDF_SCROLLBAR_VERTICAL_DEFAULT)}
+          style={pdfStyle('scrollbar')}
         >
-          <ScrollAreaPrimitive.Thumb className="relative flex-1 rounded-full bg-white/30 hover:bg-white/50" />
+          <ScrollAreaPrimitive.Thumb
+            className={pdfClassName('scrollbarThumb', PDF_SCROLLBAR_THUMB_DEFAULT)}
+            style={pdfStyle('scrollbarThumb')}
+          />
         </ScrollAreaPrimitive.Scrollbar>
         <ScrollAreaPrimitive.Scrollbar
           orientation="horizontal"
-          className="flex flex-col touch-none select-none transition-colors h-4 border-t border-t-transparent p-[2px] hover:bg-black/10 z-20"
+          className={pdfClassName(
+            'scrollbar',
+            PDF_SCROLLBAR_HORIZONTAL_DEFAULT,
+          )}
+          style={pdfStyle('scrollbar')}
         >
-          <ScrollAreaPrimitive.Thumb className="relative flex-1 rounded-full bg-white/30 hover:bg-white/50" />
+          <ScrollAreaPrimitive.Thumb
+            className={pdfClassName('scrollbarThumb', PDF_SCROLLBAR_THUMB_DEFAULT)}
+            style={pdfStyle('scrollbarThumb')}
+          />
         </ScrollAreaPrimitive.Scrollbar>
         <ScrollAreaPrimitive.Corner className="bg-transparent" />
       </ScrollAreaPrimitive.Root>

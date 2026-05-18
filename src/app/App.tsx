@@ -81,13 +81,15 @@ export function App() {
         </button>
       </nav>
 
-      <ViewFile
-        open={open}
-        onOpenChange={setOpen}
-        name={name}
-        extension={extension}
-        url={url}
-      />
+      <div className="w-full max-w-4xl h-[600px] border border-zinc-800 rounded-lg overflow-hidden bg-black/50">
+        <ViewFile
+          open={open}
+          onOpenChange={setOpen}
+          name={name}
+          extension={extension}
+          url={url}
+        />
+      </div>
     </div>
   )
 }
