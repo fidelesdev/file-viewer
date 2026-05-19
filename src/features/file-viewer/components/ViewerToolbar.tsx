@@ -73,17 +73,18 @@ export function ViewerToolbarDivider({
   )
 }
 
-export function ViewerToolbarIconButton({
-  className = '',
-  style,
-  classNames,
-  styles,
-  ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & ViewerToolbarCustomization) {
+export const ViewerToolbarIconButton = forwardRef<
+  HTMLButtonElement,
+  ButtonHTMLAttributes<HTMLButtonElement> & ViewerToolbarCustomization
+>(function ViewerToolbarIconButton(
+  { className = '', style, classNames, styles, ...rest },
+  ref,
+) {
   const globalToolbar = getFileViewerDefaults().toolbar
 
   return (
     <button
+      ref={ref}
       type="button"
       className={mergeClassNames(
         VIEWER_TOOLBAR_ICON_BUTTON_DEFAULT,
@@ -99,4 +100,5 @@ export function ViewerToolbarIconButton({
       {...rest}
     />
   )
-}
+})
+ViewerToolbarIconButton.displayName = 'ViewerToolbarIconButton'

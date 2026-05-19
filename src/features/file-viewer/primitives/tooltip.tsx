@@ -280,6 +280,37 @@ export function TooltipPortal({ children }: { children: ReactNode }) {
 
 const TOOLTIP_CONTENT_BASE = 'fv-tooltip-shell'
 
+const PLACEMENT_MEASURE_MAX_ATTEMPTS = 24
+
+function resolveTriggerElement(
+  node: HTMLElement | null,
+): HTMLElement | null {
+  if (!node) return null
+  if (node.getClientRects().length > 0) return node
+  const firstElement = node.querySelector<HTMLElement>(
+    'button, [role="button"], a[href]',
+  )
+  return firstElement ?? node
+}
+
+function measureContentSize(content: HTMLElement): {
+  width: number
+  height: number
+} {
+  const rect = content.getBoundingClientRect()
+  let width = Math.round(rect.width)
+  let height = Math.round(rect.height)
+
+  if (width === 0) {
+    width = Math.round(content.offsetWidth || content.scrollWidth)
+  }
+  if (height === 0) {
+    height = Math.round(content.offsetHeight || content.scrollHeight)
+  }
+
+  return { width, height }
+}
+
 export function TooltipContent({
   children,
   side: preferredSide = 'top',
@@ -303,17 +334,26 @@ export function TooltipContent({
       return
     }
 
+    let measureAttempts = 0
+
     const updatePlacement = () => {
-      const trigger = triggerRef.current
+      const trigger = resolveTriggerElement(triggerRef.current)
       const content = contentRef.current
       if (!trigger || !content) return
 
       const triggerRect = trigger.getBoundingClientRect()
-      const { width, height } = content.getBoundingClientRect()
-      if (width === 0 || height === 0) {
+      const { width, height } = measureContentSize(content)
+
+      if (
+        (width === 0 || height === 0) &&
+        measureAttempts < PLACEMENT_MEASURE_MAX_ATTEMPTS
+      ) {
+        measureAttempts += 1
         requestAnimationFrame(updatePlacement)
         return
       }
+
+      if (width === 0 || height === 0) return
 
       setPlacement(
         computeTooltipPlacement({
