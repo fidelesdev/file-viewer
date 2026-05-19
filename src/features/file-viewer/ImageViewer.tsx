@@ -4,7 +4,7 @@ import {
   ReactZoomPanPinchContentRef,
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch'
-import { ZoomIn, ZoomOut, Scan, LoaderCircle } from 'lucide-react'
+import { ZoomIn, ZoomOut, Scan, LoaderCircle } from './components/icons'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   ViewerFloatingToolbar,

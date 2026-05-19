@@ -1,5 +1,11 @@
-import * as Dialog from '@radix-ui/react-dialog'
-import { Download, LoaderCircle, Maximize2, Printer, X } from 'lucide-react'
+import * as Dialog from './primitives/dialog'
+import {
+  Download,
+  LoaderCircle,
+  Maximize2,
+  Printer,
+  X,
+} from './components/icons'
 import { ReactNode, Suspense, useEffect, useRef, useState, lazy } from 'react'
 import { useReactToPrint } from 'react-to-print'
 import {
@@ -38,10 +44,10 @@ export type {
 } from './customization-types'
 
 const VIEW_FILE_DIALOG_BACKDROP_DEFAULT =
-  'fixed inset-0 z-50 cursor-default border-0 bg-black/80 p-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0'
+  'fixed inset-0 z-50 cursor-default border-0 bg-black/80 p-0 data-[visible=true]:animate-in data-[visible=false]:animate-out data-[visible=false]:fade-out-0 data-[visible=true]:fade-in-0'
 
 const VIEW_FILE_DIALOG_CONTENT_DEFAULT =
-  'fixed inset-0 z-[51] flex h-full w-full min-h-0 cursor-default flex-col border-none bg-transparent p-0 shadow-none outline-none pointer-events-none duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 focus:outline-none'
+  'fixed inset-0 z-[51] flex h-full w-full min-h-0 cursor-default flex-col border-none bg-transparent p-0 shadow-none outline-none pointer-events-none duration-200 data-[visible=true]:animate-in data-[visible=false]:animate-out data-[visible=false]:fade-out-0 data-[visible=true]:fade-in-0 focus:outline-none'
 
 const VIEW_FILE_DIALOG_PANEL_DEFAULT =
   'pointer-events-auto flex h-full w-full min-h-0 flex-col overflow-hidden rounded-none border-0 bg-neutral-800/95 shadow-none'
@@ -490,6 +496,7 @@ export function ViewFile({
           <button
             type="button"
             tabIndex={-1}
+            data-visible={modalOpen}
             className={backdropClasses}
             style={backdropStyle}
             aria-hidden

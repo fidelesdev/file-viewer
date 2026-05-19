@@ -22,8 +22,22 @@
   background: transparent;
 }
 
-/* Hide misaligned text layer while container/canvas size is catching up */
+/* Hide misaligned text layer while canvas size catches up (canvas stays visible, scaled via layout) */
 .pdf-viewer [data-layout-syncing='true'] .textLayer {
   opacity: 0;
   pointer-events: none;
+}
+
+/* Keep canvas visible and proportionally scaled while layout catches up */
+.pdf-viewer [data-layout-syncing='true'] canvas {
+  object-fit: contain;
+}
+
+/* Hide native scrollbars; custom ScrollAreaScrollbar is used instead */
+.pdf-viewer .pdf-scroll-viewport {
+  scrollbar-width: none;
+}
+
+.pdf-viewer .pdf-scroll-viewport::-webkit-scrollbar {
+  display: none;
 }

@@ -1,5 +1,17 @@
-import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area'
-import { ChevronLeft, ChevronRight, Scan, ZoomIn, ZoomOut } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Scan,
+  ZoomIn,
+  ZoomOut,
+} from './components/icons'
+import {
+  ScrollAreaCorner,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from './primitives/scroll-area'
 import {
   ReactNode,
   useCallback,
@@ -35,20 +47,19 @@ export type { PdfViewerClassNames, PdfViewerStyles } from './customization-types
 const PDF_VIEWER_ROOT_DEFAULT =
   'pdf-viewer flex flex-col items-center gap-4 w-full h-full max-h-full overflow-hidden relative'
 
-const PDF_SCROLL_AREA_DEFAULT =
-  'flex w-full flex-1 relative overflow-hidden'
+const PDF_SCROLL_AREA_DEFAULT = 'size-full min-h-0 min-w-0'
 
 const PDF_SCROLL_VIEWPORT_DEFAULT =
   'w-full h-full rounded-[inherit] [&>div]:min-h-full'
 
 const PDF_SCROLLBAR_VERTICAL_DEFAULT =
-  'flex touch-none select-none transition-colors w-4 border-l border-l-transparent p-[2px] hover:bg-black/10 z-20'
+  'flex flex-col touch-none select-none transition-colors w-4 border-l border-l-transparent p-0.5 hover:bg-black/10 z-20'
 
 const PDF_SCROLLBAR_HORIZONTAL_DEFAULT =
-  'flex flex-col touch-none select-none transition-colors h-4 border-t border-t-transparent p-[2px] hover:bg-black/10 z-20'
+  'flex flex-col touch-none select-none transition-colors h-4 border-t border-t-transparent p-0.5 hover:bg-black/10 z-20'
 
 const PDF_SCROLLBAR_THUMB_DEFAULT =
-  'relative flex-1 rounded-full bg-neutral-500/50 hover:bg-neutral-500/80'
+  'relative shrink-0 rounded-full bg-neutral-500/50 hover:bg-neutral-500/80'
 
 const PDF_PAGE_DEFAULT =
   'relative flex shrink-0 items-center justify-center overflow-hidden m-auto'
@@ -193,13 +204,13 @@ export default function PdfViewer(props: PdfViewerProps) {
 
   // Keep track of whether the user has interacted with zoom yet. 
   // If not, we don't apply CSS transitions to avoid initial layout jank from placeholders.
-  const hasZoomedRef = useRef(false)
+  const [hasZoomed, setHasZoomed] = useState(false)
 
   // Reset zoom and clear cached heights when URL or view mode changes
   useEffect(() => {
     setInstantZoom(1)
     setRenderedZoom(1)
-    hasZoomedRef.current = false
+    setHasZoomed(false)
     renderedHeights.current.clear()
   }, [url, viewMode])
 
@@ -477,6 +488,77 @@ export default function PdfViewer(props: PdfViewerProps) {
     pageNumberRef.current = pageNumber
   }, [pageNumber])
 
+  const CONTINUOUS_PAGE_GAP_PX = 16
+  const isPreservingScrollRef = useRef(false)
+
+  const updateVisiblePagesFromScroll = useCallback(() => {
+    const container = containerRef.current
+    if (
+      !container ||
+      viewMode !== 'continuous' ||
+      numPages <= 0 ||
+      isPreservingScrollRef.current
+    ) {
+      return
+    }
+
+    const scrollTop = container.scrollTop
+    const viewBottom = scrollTop + container.clientHeight
+    const defaultPageHeight = zoomedRenderedDimensions.height ?? 0
+
+    let offset = 0
+    let minVisible = Number.POSITIVE_INFINITY
+    let maxVisible = 0
+
+    for (let page = 1; page <= numPages; page++) {
+      const renderedPageHeight =
+        renderedHeights.current.get(page) ?? defaultPageHeight
+      const slotHeight = Math.trunc(renderedPageHeight * layoutScale)
+      const pageTop = offset
+      const pageBottom = offset + slotHeight
+
+      if (pageBottom > scrollTop && pageTop < viewBottom) {
+        minVisible = Math.min(minVisible, page)
+        maxVisible = Math.max(maxVisible, page)
+      }
+
+      offset = pageBottom + CONTINUOUS_PAGE_GAP_PX
+    }
+
+    if (minVisible === Number.POSITIVE_INFINITY) return
+
+    setVisibleRange((prev) =>
+      prev.start !== minVisible || prev.end !== maxVisible
+        ? { start: minVisible, end: maxVisible }
+        : prev,
+    )
+  }, [
+    viewMode,
+    numPages,
+    layoutScale,
+    zoomedRenderedDimensions.height,
+  ])
+
+  useEffect(() => {
+    if (viewMode !== 'continuous' || !numPages || !containerRef.current) return
+
+    const container = containerRef.current
+    const handleScroll = () => {
+      requestAnimationFrame(updateVisiblePagesFromScroll)
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    updateVisiblePagesFromScroll()
+
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [numPages, viewMode, updateVisiblePagesFromScroll])
+
+  useEffect(() => {
+    if (instantZoom === renderedZoom) {
+      updateVisiblePagesFromScroll()
+    }
+  }, [instantZoom, renderedZoom, updateVisiblePagesFromScroll])
+
   useEffect(() => {
     if (viewMode !== 'continuous' || !numPages || !containerRef.current) return
 
@@ -555,6 +637,8 @@ export default function PdfViewer(props: PdfViewerProps) {
     const container = containerRef.current
     if (!container) return
 
+    isPreservingScrollRef.current = true
+
     // Calculate the center point of the current viewport relative to the total scrollable content
     const centerY = container.scrollTop + container.clientHeight / 2
     const ratioY = container.scrollHeight > 0 ? centerY / container.scrollHeight : 0
@@ -587,6 +671,7 @@ export default function PdfViewer(props: PdfViewerProps) {
         zoomAnimFrameRef.current = requestAnimationFrame(step)
       } else {
         zoomAnimFrameRef.current = null
+        isPreservingScrollRef.current = false
       }
     }
 
@@ -594,19 +679,19 @@ export default function PdfViewer(props: PdfViewerProps) {
   }, [])
 
   const handleZoomIn = useCallback(() => {
-    hasZoomedRef.current = true
+    setHasZoomed(true)
     preserveScrollPosition()
     setInstantZoom((prev) => Math.min(prev * 1.3, 4))
   }, [preserveScrollPosition])
 
   const handleZoomOut = useCallback(() => {
-    hasZoomedRef.current = true
+    setHasZoomed(true)
     preserveScrollPosition()
     setInstantZoom((prev) => Math.max(prev / 1.3, 0.5))
   }, [preserveScrollPosition])
 
   const handleZoomReset = useCallback(() => {
-    hasZoomedRef.current = true
+    setHasZoomed(true)
     preserveScrollPosition()
     setInstantZoom(1)
   }, [preserveScrollPosition])
@@ -762,8 +847,8 @@ export default function PdfViewer(props: PdfViewerProps) {
   }
 
   const pageTransitionClass =
-    hasZoomedRef.current && pageOriginalSize.width
-      ? 'transition-all duration-200 ease-out'
+    hasZoomed && pageOriginalSize.width
+      ? 'transition-[width,height] duration-200 ease-out'
       : ''
 
   return (
@@ -772,13 +857,16 @@ export default function PdfViewer(props: PdfViewerProps) {
         className={pdfClassName('root', PDF_VIEWER_ROOT_DEFAULT)}
         style={pdfStyle('root')}
       >
-        <ScrollAreaPrimitive.Root
+        <ScrollAreaRoot
           className={pdfClassName('scrollArea', PDF_SCROLL_AREA_DEFAULT)}
           style={pdfStyle('scrollArea')}
         >
-        <ScrollAreaPrimitive.Viewport
+        <ScrollAreaViewport
           ref={containerRef}
-          className={pdfClassName('scrollViewport', PDF_SCROLL_VIEWPORT_DEFAULT)}
+          className={pdfClassName(
+            'scrollViewport',
+            `${PDF_SCROLL_VIEWPORT_DEFAULT} pdf-scroll-viewport`,
+          )}
           style={pdfStyle('scrollViewport')}
         >
           <div className="flex min-h-full min-w-full flex-col">
@@ -904,18 +992,18 @@ export default function PdfViewer(props: PdfViewerProps) {
                 })}
             </Document>
           </div>
-        </ScrollAreaPrimitive.Viewport>
-        <ScrollAreaPrimitive.Scrollbar
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar
           orientation="vertical"
           className={pdfClassName('scrollbar', PDF_SCROLLBAR_VERTICAL_DEFAULT)}
           style={pdfStyle('scrollbar')}
         >
-          <ScrollAreaPrimitive.Thumb
+          <ScrollAreaThumb
             className={pdfClassName('scrollbarThumb', PDF_SCROLLBAR_THUMB_DEFAULT)}
             style={pdfStyle('scrollbarThumb')}
           />
-        </ScrollAreaPrimitive.Scrollbar>
-        <ScrollAreaPrimitive.Scrollbar
+        </ScrollAreaScrollbar>
+        <ScrollAreaScrollbar
           orientation="horizontal"
           className={pdfClassName(
             'scrollbar',
@@ -923,13 +1011,13 @@ export default function PdfViewer(props: PdfViewerProps) {
           )}
           style={pdfStyle('scrollbar')}
         >
-          <ScrollAreaPrimitive.Thumb
+          <ScrollAreaThumb
             className={pdfClassName('scrollbarThumb', PDF_SCROLLBAR_THUMB_DEFAULT)}
             style={pdfStyle('scrollbarThumb')}
           />
-        </ScrollAreaPrimitive.Scrollbar>
-        <ScrollAreaPrimitive.Corner className="bg-transparent" />
-      </ScrollAreaPrimitive.Root>
+        </ScrollAreaScrollbar>
+        <ScrollAreaCorner className="bg-transparent" />
+      </ScrollAreaRoot>
 
       {renderPaginationElement()}
       </div>

@@ -29,10 +29,13 @@ node -v && npm -v
     - [Styling (Tailwind & CSS)](#styling-tailwind--css)
     - [PDF.js worker](#pdfjs-worker)
     - [React-PDF layer CSS](#react-pdf-layer-css)
+  - [Peer dependencies](#peer-dependencies)
+  - [Migration from 0.1.x](#migration-from-01x)
   - [Local development (this repo)](#local-development-this-repo)
     - [Serving the playground](#serving-the-playground)
     - [Building the library](#building-the-library)
     - [Building the playground](#building-the-playground)
+    - [Publishing to npm (maintainers)](#publishing-to-npm-maintainers)
   - [API](#api)
     - [ViewFile](#viewfile)
     - [setFileViewerDefaults](#setfileviewerdefaults)
@@ -62,15 +65,37 @@ npm run dev
 
 ```sh
 npm install file-viewer
-npm install react react-dom @radix-ui/react-dialog @radix-ui/react-scroll-area @radix-ui/react-tooltip react-pdf pdfjs-dist lucide-react react-to-print react-zoom-pan-pinch
+npm install react react-dom react-pdf pdfjs-dist react-to-print react-zoom-pan-pinch
 ```
 
 Or with Yarn:
 
 ```sh
 yarn add file-viewer
-yarn add react react-dom @radix-ui/react-dialog @radix-ui/react-scroll-area @radix-ui/react-tooltip react-pdf pdfjs-dist lucide-react react-to-print react-zoom-pan-pinch
+yarn add react react-dom react-pdf pdfjs-dist react-to-print react-zoom-pan-pinch
 ```
+
+### Peer dependencies
+
+| Package | Purpose |
+| ------- | ------- |
+| `react`, `react-dom` | UI runtime |
+| `react-pdf`, `pdfjs-dist` | PDF rendering |
+| `react-to-print` | Print action in `ViewFile` |
+| `react-zoom-pan-pinch` | Image pan/zoom in `ImageViewer` |
+
+Dialog, scroll area, tooltips, and toolbar icons are **bundled inside** `file-viewer` (no `@radix-ui/*` or `lucide-react` in your app).
+
+### Migration from 0.1.x
+
+If you installed `0.1.x`, remove these peers from your app (they are no longer required):
+
+- `@radix-ui/react-dialog`
+- `@radix-ui/react-scroll-area`
+- `@radix-ui/react-tooltip`
+- `lucide-react`
+
+Reinstall peers using the table above, then bump to `file-viewer@^0.2.0`.
 
 ## Usage
 
@@ -119,11 +144,13 @@ setFileViewerDefaults({
 })
 ```
 
-| API | Description |
-| --- | --- |
-| `setFileViewerDefaults(partial)` | Merge into global defaults |
-| `getFileViewerDefaults()` | Read current defaults (debug/tests) |
-| `resetFileViewerDefaults()` | Reset to library built-ins |
+
+| API                              | Description                         |
+| -------------------------------- | ----------------------------------- |
+| `setFileViewerDefaults(partial)` | Merge into global defaults          |
+| `getFileViewerDefaults()`        | Read current defaults (debug/tests) |
+| `resetFileViewerDefaults()`      | Reset to library built-ins          |
+
 
 **Merge priority:** instance props → `setFileViewerDefaults` → built-in defaults.
 
@@ -131,10 +158,12 @@ setFileViewerDefaults({
 
 ### Inline vs modal
 
-| `mode` | Behavior |
-| --- | --- |
+
+| `mode`             | Behavior                                                   |
+| ------------------ | ---------------------------------------------------------- |
 | `inline` (default) | Fills the parent container; close button hidden by default |
-| `modal` | Full-screen Radix Dialog with backdrop |
+| `modal`            | Full-screen dialog overlay with backdrop                   |
+
 
 In **inline** mode, a header action can open the same file in a built-in full-screen modal (“Visualizar em tela cheia”), unless you pass `onOpenInModal` for custom behavior.
 
@@ -235,24 +264,26 @@ Shell with header (title, print, download, optional full-screen), and lazy-loade
 />
 ```
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `mode` | `'inline' \| 'modal'` | `'inline'` | Layout mode |
-| `open` | `boolean` | — | Controlled visibility |
-| `onOpenChange` | `(open: boolean) => void` | — | Open state callback |
-| `name` | `string` | — | Display name |
-| `extension` | `string` | — | File extension (drives viewer choice) |
-| `url` | `string` | — | File URL |
-| `isLoading` | `boolean` | — | Shows loader in viewer area |
-| `language` | `'english' \| 'portuguese'` | `'english'` | UI strings |
-| `hideCloseButton` | `boolean` | `true` in inline, `false` in modal | Hide header close control |
-| `showOpenInModalButton` | `boolean` | `true` | Full-screen button (inline only) |
-| `onOpenInModal` | `() => void` | — | Override built-in modal preview |
-| `onDownload` | `() => void` | — | Custom download; default uses `url` |
-| `pdfViewerProps` | `Omit<PdfViewerProps, 'url' \| 'language'>` | — | Passed to embedded PDF viewer |
-| `renderUnsupported` | `ReactNode` | — | Custom unsupported-type UI |
-| `classNames` / `styles` | slot maps | — | Per-slot styling |
-| `dialogClassNames` / `dialogStyles` | layer maps | — | Modal layers (`backdrop`, `content`, `panel`) |
+
+| Prop                                | Type                                       | Default                            | Description                                   |
+| ----------------------------------- | ------------------------------------------ | ---------------------------------- | --------------------------------------------- |
+| `mode`                              | `'inline' | 'modal'`                       | `'inline'`                         | Layout mode                                   |
+| `open`                              | `boolean`                                  | —                                  | Controlled visibility                         |
+| `onOpenChange`                      | `(open: boolean) => void`                  | —                                  | Open state callback                           |
+| `name`                              | `string`                                   | —                                  | Display name                                  |
+| `extension`                         | `string`                                   | —                                  | File extension (drives viewer choice)         |
+| `url`                               | `string`                                   | —                                  | File URL                                      |
+| `isLoading`                         | `boolean`                                  | —                                  | Shows loader in viewer area                   |
+| `language`                          | `'english' | 'portuguese'`                 | `'english'`                        | UI strings                                    |
+| `hideCloseButton`                   | `boolean`                                  | `true` in inline, `false` in modal | Hide header close control                     |
+| `showOpenInModalButton`             | `boolean`                                  | `true`                             | Full-screen button (inline only)              |
+| `onOpenInModal`                     | `() => void`                               | —                                  | Override built-in modal preview               |
+| `onDownload`                        | `() => void`                               | —                                  | Custom download; default uses `url`           |
+| `pdfViewerProps`                    | `Omit<PdfViewerProps, 'url' | 'language'>` | —                                  | Passed to embedded PDF viewer                 |
+| `renderUnsupported`                 | `ReactNode`                                | —                                  | Custom unsupported-type UI                    |
+| `classNames` / `styles`             | slot maps                                  | —                                  | Per-slot styling                              |
+| `dialogClassNames` / `dialogStyles` | layer maps                                 | —                                  | Modal layers (`backdrop`, `content`, `panel`) |
+
 
 There is **no** `hideHeader` prop yet; use `classNames.header` with `hidden` or `styles.header` as a workaround.
 
@@ -270,7 +301,7 @@ setFileViewerDefaults({
   pdfViewer: { preloadAhead: 1, zoomDebounceDelay: 500 },
   imageViewer: { classNames: { root: 'image-root' } },
   toolbar: { classNames: { toolbar: 'my-toolbar' } },
-  tooltip: { delayDuration: 400 },
+  tooltip: { delayDuration: 300 },
   autoHide: { proximityThreshold: 160, timeout: 3000 },
   translations: { /* deep partial per language */ },
 })
@@ -294,16 +325,18 @@ import { PdfViewer } from 'file-viewer'
 />
 ```
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `url` | `string` | — | PDF URL |
-| `viewMode` | `'single' \| 'continuous'` | `'continuous'` | Page layout |
-| `debounceDelay` | `number` | `300` | Resize debounce (ms) |
-| `zoomDebounceDelay` | `number` | `500` | Zoom canvas re-render debounce (ms) |
-| `preloadAhead` | `number` | `1` | Pages mounted outside viewport (continuous) |
-| `renderPagination` | `function \| null` | default UI | Custom pagination; `null` hides |
-| `className` / `pageClassName` / `paginationClassName` | `string` | — | Legacy aliases → `classNames` |
-| `classNames` / `styles` | slot maps | — | `root`, `scrollArea`, `page`, `pagination`, etc. |
+
+| Prop                                                  | Type                      | Default        | Description                                      |
+| ----------------------------------------------------- | ------------------------- | -------------- | ------------------------------------------------ |
+| `url`                                                 | `string`                  | —              | PDF URL                                          |
+| `viewMode`                                            | `'single' | 'continuous'` | `'continuous'` | Page layout                                      |
+| `debounceDelay`                                       | `number`                  | `300`          | Resize debounce (ms)                             |
+| `zoomDebounceDelay`                                   | `number`                  | `500`          | Zoom canvas re-render debounce (ms)              |
+| `preloadAhead`                                        | `number`                  | `1`            | Pages mounted outside viewport (continuous)      |
+| `renderPagination`                                    | `function | null`         | default UI     | Custom pagination; `null` hides                  |
+| `className` / `pageClassName` / `paginationClassName` | `string`                  | —              | Legacy aliases → `classNames`                    |
+| `classNames` / `styles`                               | slot maps                 | —              | `root`, `scrollArea`, `page`, `pagination`, etc. |
+
 
 Page width in both modes is capped at **50rem** (same sizing rules).
 
@@ -343,12 +376,11 @@ Run `npx tsc --noEmit` and `npm run build:lib` before submitting.
 ## Built with
 
 - [React](https://react.dev/)
-- [Radix UI](https://www.radix-ui.com/) (Dialog, Scroll Area, Tooltip)
 - [react-pdf](https://github.com/wojtekmaj/react-pdf) / [pdf.js](https://mozilla.github.io/pdf.js/)
 - [react-zoom-pan-pinch](https://github.com/BetterTyped/react-zoom-pan-pinch)
-- [Tailwind CSS](https://tailwindcss.com/) v4
+- Internal UI primitives (dialog, scroll area, tooltip) and inline SVG icons — no Radix UI or Lucide at runtime
+- [Tailwind CSS](https://tailwindcss.com/) v4 (utilities in components; optional pre-built `file-viewer/style.css`)
 - [Vite](https://vitejs.dev/) + [tsup](https://tsup.egoist.dev/) (playground + library build)
-- [lucide-react](https://lucide.dev/) (icons)
 
 ## Versioning
 

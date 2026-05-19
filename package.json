@@ -1,9 +1,24 @@
 {
   "name": "file-viewer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
-  "description": "React components for in-app file preview: dialog shell (ViewFile), PDF viewer, and image pan/zoom. Peer deps include Radix Dialog, Scroll Area, Tooltip, react-pdf, etc.",
+  "description": "React components for in-app file preview: dialog shell (ViewFile), PDF viewer, and image pan/zoom. No Radix UI or icon library peer dependencies.",
   "license": "MIT",
+  "author": "fidelesdev <matheusfideles2507@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fidelesdev/file-viewer.git"
+  },
+  "homepage": "https://github.com/fidelesdev/file-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/fidelesdev/file-viewer/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -27,8 +42,9 @@
     "viewer",
     "image",
     "preview",
-    "radix-ui",
-    "react-pdf"
+    "file-preview",
+    "react-pdf",
+    "document-viewer"
   ],
   "scripts": {
     "dev": "vite",
@@ -39,10 +55,6 @@
     "preview": "vite preview --outDir playground-dist"
   },
   "peerDependencies": {
-    "@radix-ui/react-dialog": "^1.1.0",
-    "@radix-ui/react-scroll-area": "^1.2.0",
-    "@radix-ui/react-tooltip": "^1.2.8",
-    "lucide-react": "^0.400.0 || ^0.500.0 || ^0.600.0",
     "pdfjs-dist": "^4.8.0",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0",
@@ -51,15 +63,11 @@
     "react-zoom-pan-pinch": "^4.0.0"
   },
   "devDependencies": {
-    "@radix-ui/react-dialog": "^1.1.14",
-    "@radix-ui/react-scroll-area": "^1.2.9",
-    "@radix-ui/react-tooltip": "^1.1.0",
     "@tailwindcss/cli": "^4.3.0",
     "@tailwindcss/vite": "^4.1.8",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
     "@vitejs/plugin-react": "^4.5.0",
-    "lucide-react": "^0.511.0",
     "pdfjs-dist": "4.8.69",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

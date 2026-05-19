@@ -1,4 +1,4 @@
-import { FileImage, FileText, FileQuestion } from 'lucide-react'
+import { FileImage, FileText, FileQuestion } from '@/features/file-viewer/components/icons'
 import { useState } from 'react'
 
 import { ViewFile } from '@/features/file-viewer'
