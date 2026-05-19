@@ -2,19 +2,19 @@ import type { CSSProperties } from 'react'
 
 export type SlotStyle = CSSProperties
 
-export type ViewFileDialogClassNames = {
+export type FileViewerDialogClassNames = {
   backdrop?: string
   content?: string
   panel?: string
 }
 
-export type ViewFileDialogStyles = {
+export type FileViewerDialogStyles = {
   backdrop?: SlotStyle
   content?: SlotStyle
   panel?: SlotStyle
 }
 
-export type ViewFileClassNames = {
+export type FileViewerClassNames = {
   root?: string
   header?: string
   headerTitle?: string
@@ -28,7 +28,7 @@ export type ViewFileClassNames = {
   unsupported?: string
 }
 
-export type ViewFileStyles = {
+export type FileViewerStyles = {
   root?: SlotStyle
   header?: SlotStyle
   headerTitle?: SlotStyle

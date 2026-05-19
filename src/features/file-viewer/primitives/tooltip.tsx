@@ -22,8 +22,10 @@ import {
 type TooltipGroupContextValue = {
   delayDuration: number
   skipDelayDuration: number
+  closeDelayDuration: number
   getOpenDelay: () => number
   onTooltipOpened: () => void
+  closeActiveTooltip: () => void
   requestExclusiveOpen: (closeCallback: () => void) => void
   releaseExclusiveOpen: (closeCallback: () => void) => void
 }
@@ -38,14 +40,25 @@ function useTooltipGroup() {
   return context
 }
 
+/** Closes the currently open tooltip in this provider (no-op if none). */
+export function useCloseActiveTooltip(): () => void {
+  const context = useContext(TooltipGroupContext)
+  return context?.closeActiveTooltip ?? (() => undefined)
+}
+
+const DEFAULT_CLOSE_DELAY_MS = 0
+
 export function TooltipProvider({
   children,
   delayDuration = 300,
   skipDelayDuration = 500,
+  closeDelayDuration = DEFAULT_CLOSE_DELAY_MS,
 }: {
   children: ReactNode
   delayDuration?: number
   skipDelayDuration?: number
+  /** Delay before hiding after pointer leaves (default: 0). */
+  closeDelayDuration?: number
 }) {
   const isOpenDelayedRef = useRef(true)
   const skipDelayTimerRef = useRef<number | null>(null)
@@ -79,6 +92,11 @@ export function TooltipProvider({
     }
   }, [])
 
+  const closeActiveTooltip = useCallback(() => {
+    activeCloseRef.current?.()
+    activeCloseRef.current = null
+  }, [])
+
   useEffect(
     () => () => {
       if (skipDelayTimerRef.current !== null) {
@@ -88,13 +106,38 @@ export function TooltipProvider({
     [],
   )
 
+  useEffect(() => {
+    const handleDismiss = () => closeActiveTooltip()
+
+    const handlePointerOut = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse') return
+      const related = event.relatedTarget
+      if (related instanceof Node && document.documentElement.contains(related)) {
+        return
+      }
+      closeActiveTooltip()
+    }
+
+    window.addEventListener('blur', handleDismiss)
+    window.addEventListener('scroll', handleDismiss, true)
+    document.documentElement.addEventListener('pointerout', handlePointerOut)
+
+    return () => {
+      window.removeEventListener('blur', handleDismiss)
+      window.removeEventListener('scroll', handleDismiss, true)
+      document.documentElement.removeEventListener('pointerout', handlePointerOut)
+    }
+  }, [closeActiveTooltip])
+
   return (
     <TooltipGroupContext.Provider
       value={{
         delayDuration,
         skipDelayDuration,
+        closeDelayDuration,
         getOpenDelay,
         onTooltipOpened,
+        closeActiveTooltip,
         requestExclusiveOpen,
         releaseExclusiveOpen,
       }}
@@ -169,8 +212,8 @@ export function TooltipRoot({ children }: { children: ReactNode }) {
     closeTimerRef.current = window.setTimeout(() => {
       closeTooltip()
       closeTimerRef.current = null
-    }, group.skipDelayDuration)
-  }, [clearTimers, closeTooltip, group.skipDelayDuration])
+    }, group.closeDelayDuration)
+  }, [clearTimers, closeTooltip, group.closeDelayDuration])
 
   useEffect(() => {
     return () => {

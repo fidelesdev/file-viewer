@@ -1,3 +1,5 @@
+'use client'
+
 import {
   ChevronLeft,
   ChevronRight,
@@ -20,7 +22,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Document, Page, pdfjs } from 'react-pdf'
+import { Document, Page } from 'react-pdf'
 import './pdf-viewer.css'
 import {
   FileViewerTooltip,
@@ -69,11 +71,6 @@ const PDF_PAGE_INNER_DEFAULT =
 
 const PDF_PAGE_INPUT_DEFAULT =
   'w-10 bg-transparent text-center focus:outline-none transition-colors'
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString()
 
 export type PdfViewMode = 'single' | 'continuous'
 

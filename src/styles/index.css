@@ -1,4 +1,7 @@
 @import 'tailwindcss';
 @plugin 'tailwindcss-animate';
 @source '../**/*.{tsx,ts,jsx,js}';
+/* react-pdf 9 — included in dist/style.css (consumers import only file-viewer/style.css) */
+@import 'react-pdf/dist/esm/Page/TextLayer.css';
+@import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 @import '../features/file-viewer/pdf-viewer.css';

@@ -10,7 +10,9 @@ import {
   TooltipTrigger,
   TooltipPortal,
   TooltipContent,
+  useCloseActiveTooltip,
 } from '../primitives/tooltip'
+import { renderAsChild } from '../primitives/as-child'
 import { mergeClassNames, mergeStyles } from '../utils/merge-slot-props'
 
 const FILE_VIEWER_TOOLTIP_CONTENT_DEFAULT =
@@ -33,6 +35,16 @@ export function FileViewerTooltipProvider({
   )
 }
 
+function TooltipDisabledTarget({ children }: { children: ReactElement }) {
+  const closeActiveTooltip = useCloseActiveTooltip()
+
+  return renderAsChild(true, children, {
+    className: 'pointer-events-auto',
+    onMouseEnter: () => closeActiveTooltip(),
+    onFocus: () => closeActiveTooltip(),
+  })
+}
+
 export function FileViewerTooltip({
   content,
   children,
@@ -47,7 +59,7 @@ export function FileViewerTooltip({
   styles?: FileViewerTooltipStyles
 }) {
   if (disabled) {
-    return children
+    return <TooltipDisabledTarget>{children}</TooltipDisabledTarget>
   }
 
   const tooltipDefaults = getFileViewerDefaults().tooltip

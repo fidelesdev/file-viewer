@@ -1,11 +1,11 @@
-export { ViewFile } from './ViewFile'
+export { FileViewer } from './FileViewer'
 export type {
-  ViewFileClassNames,
-  ViewFileDialogClassNames,
-  ViewFileDialogStyles,
-  ViewFileProps,
-  ViewFileStyles,
-} from './ViewFile'
+  FileViewerClassNames,
+  FileViewerDialogClassNames,
+  FileViewerDialogStyles,
+  FileViewerProps,
+  FileViewerStyles,
+} from './FileViewer'
 export { default as PdfViewer } from './PdfViewer'
 export type {
   PdfViewerClassNames,
@@ -33,6 +33,13 @@ export type {
   ViewerToolbarStyles,
 } from './customization-types'
 export {
+  configureFileViewerPdfWorker,
+  getFileViewerPdfWorkerCdnUrl,
+  getFileViewerPdfWorkerSrc,
+  isFileViewerPdfWorkerConfigured,
+} from './configure-pdf-worker'
+export type { ConfigureFileViewerPdfWorkerOptions } from './configure-pdf-worker'
+export {
   getFileViewerDefaults,
   resetFileViewerDefaults,
   resolveImageViewerProps,
@@ -48,12 +55,12 @@ export {
   resolveFormattedMessage,
 } from './translations'
 export type {
+  FileViewerShellTranslations,
   FileViewerTranslations,
   FormattableMessage,
   ImageViewerTranslations,
   PdfPageInputAriaLabelParams,
   PdfViewerTranslations,
   UnsupportedFileTypeParams,
-  ViewFileTranslations,
   ViewerLanguage,
 } from './translations'

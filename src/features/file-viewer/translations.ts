@@ -11,7 +11,7 @@ export type PdfPageInputAriaLabelParams = { value: string }
 
 export type ViewerLanguage = 'english' | 'portuguese'
 
-export interface ViewFileTranslations {
+export interface FileViewerShellTranslations {
   closeAriaLabel: string
   printAriaLabel: string
   printTooltip: string
@@ -49,13 +49,13 @@ export interface PdfViewerTranslations {
 }
 
 export interface FileViewerTranslations {
-  viewFile: ViewFileTranslations
+  fileViewer: FileViewerShellTranslations
   imageViewer: ImageViewerTranslations
   pdfViewer: PdfViewerTranslations
 }
 
 export type DeepPartialFileViewerTranslations = {
-  viewFile?: Partial<ViewFileTranslations>
+  fileViewer?: Partial<FileViewerShellTranslations>
   imageViewer?: Partial<ImageViewerTranslations>
   pdfViewer?: Partial<PdfViewerTranslations>
 }
@@ -65,7 +65,7 @@ export const fileViewerTranslationsByLanguage: Record<
   FileViewerTranslations
 > = {
   english: {
-    viewFile: {
+    fileViewer: {
       closeAriaLabel: 'Close',
       printAriaLabel: 'Print',
       printTooltip: 'Print',
@@ -102,7 +102,7 @@ export const fileViewerTranslationsByLanguage: Record<
     },
   },
   portuguese: {
-    viewFile: {
+    fileViewer: {
       closeAriaLabel: 'Fechar',
       printAriaLabel: 'Imprimir',
       printTooltip: 'Imprimir',
@@ -151,7 +151,7 @@ export function applyTranslationOverlay(
   if (!overlay) return builtIn
 
   return {
-    viewFile: { ...builtIn.viewFile, ...overlay.viewFile },
+    fileViewer: { ...builtIn.fileViewer, ...overlay.fileViewer },
     imageViewer: { ...builtIn.imageViewer, ...overlay.imageViewer },
     pdfViewer: { ...builtIn.pdfViewer, ...overlay.pdfViewer },
   } as FileViewerTranslations

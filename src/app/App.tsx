@@ -1,7 +1,7 @@
 import { FileImage, FileText, FileQuestion } from '@/features/file-viewer/components/icons'
 import { useState } from 'react'
 
-import { ViewFile } from '@/features/file-viewer'
+import { FileViewer } from '@/features/file-viewer'
 
 const SAMPLE_PDF = 'src/large.pdf'
 
@@ -41,7 +41,7 @@ export function App() {
         </h1>
         <p className="text-zinc-400 text-sm">
           Use os botões abaixo para abrir o modal{' '}
-          <code className="text-emerald-400/90">ViewFile</code> com PDF, imagem
+          <code className="text-emerald-400/90">FileViewer</code> com PDF, imagem
           ou formato sem visualizador.
         </p>
       </header>
@@ -82,7 +82,7 @@ export function App() {
       </nav>
 
       <div className="w-full max-w-4xl h-[600px] border border-zinc-800 rounded-lg overflow-hidden bg-black/50">
-        <ViewFile
+        <FileViewer
           open={open}
           onOpenChange={setOpen}
           name={name}

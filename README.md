@@ -3,7 +3,7 @@
 
 # file-viewer
 
-> React components for in-app file preview: a shell (`ViewFile`), PDF viewer (`react-pdf`), and image viewer with pan/zoom.
+> React components for in-app file preview: a shell (`FileViewer`), PDF viewer (`react-pdf`), and image viewer with pan/zoom.
 
 ## Prerequisites
 
@@ -27,7 +27,7 @@ node -v && npm -v
     - [Global defaults](#global-defaults)
     - [Inline vs modal](#inline-vs-modal)
     - [Styling (Tailwind & CSS)](#styling-tailwind--css)
-    - [PDF.js worker](#pdfjs-worker)
+    - [PDF.js worker (required for PDF)](#pdfjs-worker-required-for-pdf)
     - [React-PDF layer CSS](#react-pdf-layer-css)
   - [Peer dependencies](#peer-dependencies)
   - [Migration from 0.1.x](#migration-from-01x)
@@ -37,7 +37,7 @@ node -v && npm -v
     - [Building the playground](#building-the-playground)
     - [Publishing to npm (maintainers)](#publishing-to-npm-maintainers)
   - [API](#api)
-    - [ViewFile](#viewfile)
+    - [FileViewer](#fileviewer)
     - [setFileViewerDefaults](#setfileviewerdefaults)
     - [PdfViewer](#pdfviewer)
     - [ImageViewer](#imageviewer)
@@ -61,30 +61,33 @@ npm run dev
 
 ## Installation
 
-**Before you install:** read [Prerequisites](#prerequisites) and install peer dependencies.
+Your app must already use **React 18+**. Then install only the library — **npm 7+**, **Yarn 2+**, and **pnpm** install [peer dependencies](https://nodejs.org/en/blog/npm/peer-dependencies) from `file-viewer` automatically (no separate `npm install react-pdf …` in your project).
 
 ```sh
 npm install file-viewer
-npm install react react-dom react-pdf pdfjs-dist react-to-print react-zoom-pan-pinch
 ```
-
-Or with Yarn:
 
 ```sh
 yarn add file-viewer
-yarn add react react-dom react-pdf pdfjs-dist react-to-print react-zoom-pan-pinch
 ```
 
-### Peer dependencies
+```sh
+pnpm add file-viewer
+```
 
-| Package | Purpose |
-| ------- | ------- |
-| `react`, `react-dom` | UI runtime |
-| `react-pdf`, `pdfjs-dist` | PDF rendering |
-| `react-to-print` | Print action in `ViewFile` |
-| `react-zoom-pan-pinch` | Image pan/zoom in `ImageViewer` |
+### Peer dependencies (declared in `file-viewer`)
 
-Dialog, scroll area, tooltips, and toolbar icons are **bundled inside** `file-viewer` (no `@radix-ui/*` or `lucide-react` in your app).
+These are listed in this package’s `package.json`; the installer resolves them for you. You do not add them manually unless you use **npm 6** or disable peer auto-install.
+
+| Package | Version | Purpose |
+| ------- | ------- | ------- |
+| `react`, `react-dom` | 18 or 19 | UI runtime (from your app) |
+| `react-pdf` | 9.x | PDF rendering |
+| `pdfjs-dist` | **~4.8.69** (same as react-pdf 9) | PDF.js engine — do not use 4.9+ / 4.10+ |
+| `react-to-print` | 3.x | Print in `FileViewer` |
+| `react-zoom-pan-pinch` | 4.x | Image pan/zoom |
+
+Dialog, scroll area, tooltips, and toolbar icons are **bundled inside** `file-viewer` (no `@radix-ui/*` or `lucide-react`).
 
 ### Migration from 0.1.x
 
@@ -95,23 +98,34 @@ If you installed `0.1.x`, remove these peers from your app (they are no longer r
 - `@radix-ui/react-tooltip`
 - `lucide-react`
 
-Reinstall peers using the table above, then bump to `file-viewer@^0.2.0`.
+Then install `file-viewer@^0.2.0` only; peers are declared on the package.
 
 ## Usage
 
 ### Quick start
 
+Styles load automatically when you import from `file-viewer`. **PDF preview** requires a one-time worker setup in your app entry (see [PDF.js worker](#pdfjs-worker-required-for-pdf)).
+
 ```tsx
-import { ViewFile } from 'file-viewer'
-import 'file-viewer/style.css'
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css'
-import 'react-pdf/dist/esm/Page/TextLayer.css'
+// main.tsx or app entry — before rendering PDFs
+import {
+  configureFileViewerPdfWorker,
+  getFileViewerPdfWorkerSrc,
+} from 'file-viewer'
+
+configureFileViewerPdfWorker({
+  workerSrc: getFileViewerPdfWorkerSrc(),
+})
+```
+
+```tsx
+import { FileViewer } from 'file-viewer'
 
 export function DocumentPreview() {
   const [open, setOpen] = useState(true)
 
   return (
-    <ViewFile
+    <FileViewer
       open={open}
       onOpenChange={setOpen}
       name="report.pdf"
@@ -122,7 +136,7 @@ export function DocumentPreview() {
 }
 ```
 
-Supported preview extensions in `ViewFile`: **pdf**, **jpg**, **jpeg**, **png**. Other types show a fallback message (or `renderUnsupported`).
+Supported preview extensions in `FileViewer`: **pdf**, **jpg**, **jpeg**, **png**. Other types show a fallback message (or `renderUnsupported`).
 
 ### Global defaults
 
@@ -133,13 +147,13 @@ import { setFileViewerDefaults } from 'file-viewer'
 
 setFileViewerDefaults({
   language: 'portuguese',
-  viewFile: { mode: 'inline' },
+  fileViewer: { mode: 'inline' },
   pdfViewer: { viewMode: 'continuous', zoomDebounceDelay: 500 },
 })
 
 setFileViewerDefaults({
   translations: {
-    portuguese: { viewFile: { downloadTooltip: 'Baixar arquivo' } },
+    portuguese: { fileViewer: { downloadTooltip: 'Baixar arquivo' } },
   },
 })
 ```
@@ -167,39 +181,158 @@ setFileViewerDefaults({
 
 In **inline** mode, a header action can open the same file in a built-in full-screen modal (“Visualizar em tela cheia”), unless you pass `onOpenInModal` for custom behavior.
 
-### Styling (Tailwind & CSS)
+### Styling (automatic)
 
-Components ship with **Tailwind CSS v4** utility classes.
+The published build runs **Tailwind v4** over this library and ships the result as `dist/style.css`. Importing any export from `file-viewer` pulls that CSS in (Vite, Webpack, Next with `transpilePackages`).
 
-**Option A — Your app uses Tailwind v4:** scan the package `dist` so built-in classes are generated:
+**Optional manual import** (same file, if your bundler does not follow CSS from `node_modules`):
+
+```ts
+import 'file-viewer/style.css'
+```
+
+**Option — Your app already uses Tailwind v4:** you may scan the package instead of relying on the pre-built CSS:
 
 ```css
 @import "tailwindcss";
 @source "./node_modules/file-viewer/dist";
 ```
 
-**Option B — Pre-built CSS:** import the bundle produced at publish time:
-
-```ts
-import 'file-viewer/style.css'
-```
-
-**Customization without Tailwind:** use `styles` (`React.CSSProperties`) on `ViewFile`, `PdfViewer`, `ImageViewer`, or via `setFileViewerDefaults`.
+**Customization without Tailwind:** use `styles` (`React.CSSProperties`) on `FileViewer`, `PdfViewer`, `ImageViewer`, or via `setFileViewerDefaults`.
 
 **Dynamic `classNames` from props** (e.g. `classNames={{ header: 'text-[#235685]' }}`): Tailwind only emits utilities it finds during the build scan. Classes passed as **runtime strings** are not visible to the compiler unless they also appear as **static** text in files covered by `@source` (your app source), or you add them to a **safelist** / theme. Prefer `styles` for one-off colors, or define fixed utility classes in your own CSS.
 
-### PDF.js worker
+### PDF.js worker (required for PDF)
 
-`PdfViewer` sets `pdfjs.GlobalWorkerOptions.workerSrc` from `pdfjs-dist`. Vite usually resolves this automatically; other bundlers may need to copy the worker to `public/` — see [pdf.js getting started](https://mozilla.github.io/pdf.js/getting_started/).
+`file-viewer` does **not** set the PDF.js worker path inside the published bundle (that would point to a non-existent file under `node_modules/file-viewer/dist/`). Call **`configureFileViewerPdfWorker`** once in your app entry, **before** any `FileViewer` / `PdfViewer` renders a PDF.
+
+#### Recommended (matches react-pdf API version)
+
+Uses `pdfjs.version` from react-pdf (e.g. `4.8.69`), so API and worker stay in sync:
+
+```ts
+// src/main.tsx
+import {
+  configureFileViewerPdfWorker,
+  getFileViewerPdfWorkerSrc,
+} from 'file-viewer'
+
+configureFileViewerPdfWorker({
+  workerSrc: getFileViewerPdfWorkerSrc(),
+})
+
+// or simply (same default):
+// configureFileViewerPdfWorker()
+```
+
+Requires network (unpkg). Fine for dev; for production you can self-host the same file or pin a local copy.
+
+#### Version mismatch (`4.8.69` vs `4.10.x`)
+
+If you see *The API version does not match the Worker version*, your app resolved a **newer** `pdfjs-dist` worker (often `4.10.x`) while react-pdf 9 uses **4.8.69** for the API.
+
+Fix:
+
+```sh
+npm install pdfjs-dist@4.8.69
+```
+
+Or use `getFileViewerPdfWorkerSrc()` instead of `new URL('pdfjs-dist/...', import.meta.url)`.
+
+Optional `package.json` override:
+
+```json
+{
+  "overrides": {
+    "pdfjs-dist": "4.8.69"
+  }
+}
+```
+
+#### Vite — local worker (offline)
+
+Only after pinning `pdfjs-dist@4.8.69`:
+
+```ts
+import { configureFileViewerPdfWorker } from 'file-viewer'
+
+configureFileViewerPdfWorker({
+  workerSrc: new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url,
+  ).href,
+})
+```
+
+Or with `?url`:
+
+```ts
+import { configureFileViewerPdfWorker } from 'file-viewer'
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+
+configureFileViewerPdfWorker({ workerSrc: pdfWorker })
+```
+
+#### Next.js (App Router)
+
+In a Client Component loaded early (e.g. `providers.tsx` with `'use client'`):
+
+```tsx
+'use client'
+
+import { configureFileViewerPdfWorker } from 'file-viewer'
+
+import {
+  configureFileViewerPdfWorker,
+  getFileViewerPdfWorkerSrc,
+} from 'file-viewer'
+
+configureFileViewerPdfWorker({
+  workerSrc: getFileViewerPdfWorkerSrc(),
+})
+```
+
+Ensure `pdfjs-dist@4.8.69` is installed and `transpilePackages: ['file-viewer']` is set in `next.config.ts`.
+
+#### API
+
+| Export | Description |
+| ------ | ----------- |
+| `configureFileViewerPdfWorker({ workerSrc? })` | Sets `pdfjs.GlobalWorkerOptions.workerSrc` |
+| `getFileViewerPdfWorkerSrc()` | CDN URL locked to `pdfjs.version` (recommended) |
+| `getFileViewerPdfWorkerCdnUrl()` | Alias of `getFileViewerPdfWorkerSrc` |
+| `isFileViewerPdfWorkerConfigured()` | `true` after configure was called |
+
+See [pdf.js getting started](https://mozilla.github.io/pdf.js/getting_started/) for more context.
 
 ### React-PDF layer CSS
 
-Import once in your app entry:
+Included in the bundled `style.css` (react-pdf 9 text/annotation layers). No extra imports.
+
+### Vite
+
+1. Call `configureFileViewerPdfWorker` in `main.tsx` (see [PDF.js worker](#pdfjs-worker-required-for-pdf)).
+2. Use `FileViewer` in your components:
+
+```tsx
+import { FileViewer } from 'file-viewer'
+```
+
+### Next.js (App Router)
+
+Add to `next.config.ts`:
 
 ```ts
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css'
-import 'react-pdf/dist/esm/Page/TextLayer.css'
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
+  transpilePackages: ['file-viewer'],
+}
+
+export default nextConfig
 ```
+
+Call `configureFileViewerPdfWorker` in a Client Component loaded at startup, then use `FileViewer`. Shell components include `'use client'`.
 
 ## Local development (this repo)
 
@@ -209,7 +342,7 @@ import 'react-pdf/dist/esm/Page/TextLayer.css'
 npm run dev
 ```
 
-Opens the Vite demo (`src/app/App.tsx`) with inline `ViewFile` and sample PDF/image scenarios.
+Opens the Vite demo (`src/app/App.tsx`) with inline `FileViewer` and sample PDF/image scenarios.
 
 ### Building the library
 
@@ -241,12 +374,12 @@ npm run preview
 
 ## API
 
-### ViewFile
+### FileViewer
 
 Shell with header (title, print, download, optional full-screen), and lazy-loaded PDF or image viewer.
 
 ```tsx
-<ViewFile
+<FileViewer
   mode="inline"
   open={open}
   onOpenChange={setOpen}
@@ -292,7 +425,7 @@ There is **no** `hideHeader` prop yet; use `classNames.header` with `hidden` or 
 ```ts
 setFileViewerDefaults({
   language: 'portuguese',
-  viewFile: {
+  fileViewer: {
     hideCloseButton: true,
     showOpenInModalButton: true,
     classNames: { header: 'app-viewer-header' },
@@ -359,7 +492,7 @@ Pan/zoom via `react-zoom-pan-pinch`, floating toolbar with auto-hide.
 
 ### Customization slots
 
-Shared types: `ViewFileClassNames`, `PdfViewerClassNames`, `ImageViewerClassNames`, `ViewerToolbarClassNames`, `FileViewerTooltipClassNames`, and matching `*Styles` (`SlotStyle` = `CSSProperties`).
+Shared types: `FileViewerClassNames`, `PdfViewerClassNames`, `ImageViewerClassNames`, `ViewerToolbarClassNames`, `FileViewerTooltipClassNames`, and matching `*Styles` (`SlotStyle` = `CSSProperties`).
 
 See `src/features/file-viewer/customization-types.ts` for all keys.
 

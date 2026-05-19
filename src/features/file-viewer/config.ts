@@ -5,10 +5,10 @@ import type {
   ImageViewerStyles,
   PdfViewerClassNames,
   PdfViewerStyles,
-  ViewFileClassNames,
-  ViewFileDialogClassNames,
-  ViewFileDialogStyles,
-  ViewFileStyles,
+  FileViewerClassNames,
+  FileViewerDialogClassNames,
+  FileViewerDialogStyles,
+  FileViewerStyles,
   ViewerToolbarClassNames,
   ViewerToolbarStyles,
 } from './customization-types'
@@ -28,14 +28,14 @@ import {
 export interface FileViewerDefaults {
   language?: ViewerLanguage
 
-  viewFile?: {
+  fileViewer?: {
     mode?: 'modal' | 'inline'
     hideCloseButton?: boolean
     showOpenInModalButton?: boolean
-    dialogClassNames?: ViewFileDialogClassNames
-    dialogStyles?: ViewFileDialogStyles
-    classNames?: ViewFileClassNames
-    styles?: ViewFileStyles
+    dialogClassNames?: FileViewerDialogClassNames
+    dialogStyles?: FileViewerDialogStyles
+    classNames?: FileViewerClassNames
+    styles?: FileViewerStyles
     pdfViewerProps?: Omit<PdfViewerProps, 'url' | 'language'>
   }
 
@@ -83,10 +83,10 @@ function mergePdfViewerLayer(
   }
 }
 
-function mergeViewFileDefaults(
-  current: FileViewerDefaults['viewFile'],
-  partial: NonNullable<FileViewerDefaults['viewFile']>,
-): FileViewerDefaults['viewFile'] {
+function mergeFileViewerDefaults(
+  current: FileViewerDefaults['fileViewer'],
+  partial: NonNullable<FileViewerDefaults['fileViewer']>,
+): FileViewerDefaults['fileViewer'] {
   return {
     ...current,
     ...partial,
@@ -169,10 +169,10 @@ export function setFileViewerDefaults(partial: DeepPartial<FileViewerDefaults>):
     next.language = partial.language
   }
 
-  if (partial.viewFile) {
-    next.viewFile = mergeViewFileDefaults(
-      next.viewFile,
-      partial.viewFile as NonNullable<FileViewerDefaults['viewFile']>,
+  if (partial.fileViewer) {
+    next.fileViewer = mergeFileViewerDefaults(
+      next.fileViewer,
+      partial.fileViewer as NonNullable<FileViewerDefaults['fileViewer']>,
     )
   }
 
@@ -232,7 +232,7 @@ export function resolvePdfViewerProps(
   const defaults = getFileViewerDefaults()
   const merged =
     mergePdfViewerLayer(
-      mergePdfViewerLayer(defaults.pdfViewer, defaults.viewFile?.pdfViewerProps),
+      mergePdfViewerLayer(defaults.pdfViewer, defaults.fileViewer?.pdfViewerProps),
       instance,
     ) ?? {}
 

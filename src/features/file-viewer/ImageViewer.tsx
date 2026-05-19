@@ -1,3 +1,5 @@
+'use client'
+
 import {
   TransformWrapper,
   TransformComponent,
@@ -212,30 +214,49 @@ export default function ImageViewer({
     setHasImageLoaded(true)
   }
 
-  const handleWheelZoom = (event: React.WheelEvent) => {
-    if (!hasImageLoaded) return
-    const ref = transformRef.current
-    if (!ref) return
+  const applyWheelZoom = useCallback(
+    (event: WheelEvent) => {
+      if (!hasImageLoaded) return
+      const ref = transformRef.current
+      if (!ref) return
 
-    const { scale, positionX, positionY } = ref.state
+      event.preventDefault()
+      event.stopPropagation()
 
-    const { newX, newY, newScale } = calculateMultiplicativeZoom({
-      scale,
-      positionX,
-      positionY,
-      deltaY: event.deltaY,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      wrapperComponent: ref.instance.wrapperComponent,
-      minScale: minZoom,
-      maxScale: maxZoom,
-    })
+      const { scale, positionX, positionY } = ref.state
 
-    if (newScale !== scale) {
-      ref.setTransform(newX, newY, newScale, 0)
-      scheduleWheelViewportClamp()
+      const { newX, newY, newScale } = calculateMultiplicativeZoom({
+        scale,
+        positionX,
+        positionY,
+        deltaY: event.deltaY,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        wrapperComponent: ref.instance.wrapperComponent,
+        minScale: minZoom,
+        maxScale: maxZoom,
+      })
+
+      if (newScale !== scale) {
+        ref.setTransform(newX, newY, newScale, 0)
+        scheduleWheelViewportClamp()
+      }
+    },
+    [hasImageLoaded, maxZoom, scheduleWheelViewportClamp],
+  )
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleWheel = (event: WheelEvent) => {
+      if (!container.contains(event.target as Node)) return
+      applyWheelZoom(event)
     }
-  }
+
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [applyWheelZoom, hasImageLoaded])
 
   const zoomOutDisabled = viewport.scale <= minZoom + SCALE_EPSILON
   const zoomInDisabled = viewport.scale >= maxZoom - SCALE_EPSILON
@@ -252,7 +273,6 @@ export default function ImageViewer({
         ref={containerRef}
         className={imageClassName('root', IMAGE_ROOT_DEFAULT)}
         style={imageStyle('root')}
-        onWheel={handleWheelZoom}
       >
         {!hasImageLoaded ? (
           <div
