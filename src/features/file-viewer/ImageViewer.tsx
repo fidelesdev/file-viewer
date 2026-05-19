@@ -31,15 +31,13 @@ import { resolveOption } from './utils/resolve-options'
 
 export type { ImageViewerClassNames, ImageViewerStyles } from './customization-types'
 
-const IMAGE_ROOT_DEFAULT =
-  'relative flex size-full items-center justify-center overflow-hidden'
+const IMAGE_ROOT_DEFAULT = 'fv-image-root'
 
-const IMAGE_LOADER_OVERLAY_DEFAULT =
-  'absolute inset-0 z-30 flex items-center justify-center bg-neutral-950/40'
+const IMAGE_LOADER_OVERLAY_DEFAULT = 'fv-image-loader'
 
-const IMAGE_LOADER_ICON_DEFAULT = 'size-10 animate-spin text-white'
+const IMAGE_LOADER_ICON_DEFAULT = 'fv-icon fv-icon--xl fv-icon--spin fv-icon--white'
 
-const IMAGE_IMG_DEFAULT = 'max-h-[calc(100dvh-10rem)] max-w-full shadow'
+const IMAGE_IMG_DEFAULT = 'fv-image-img'
 
 const SCALE_EPSILON = 0.012
 const FIT_AT_ONE_EPSILON = 0.018
@@ -265,7 +263,9 @@ export default function ImageViewer({
   const fitDisabled =
     Math.abs(viewport.scale - 1) < FIT_AT_ONE_EPSILON && nearDefaultPan
 
-  const wrapperCursorClass = isPanning ? 'cursor-move' : ''
+  const wrapperClassName = isPanning
+    ? 'fv-transform-wrapper fv-transform-wrapper--panning'
+    : 'fv-transform-wrapper'
 
   return (
     <FileViewerTooltipProvider>
@@ -301,8 +301,8 @@ export default function ImageViewer({
           {({ zoomIn, zoomOut, resetTransform }) => (
             <>
               <TransformComponent
-                wrapperClass={`!size-full ${wrapperCursorClass}`}
-                contentClass="!size-full flex items-center justify-center"
+                wrapperClass={wrapperClassName}
+                contentClass="fv-transform-content"
               >
                 <img
                   src={url}
@@ -316,18 +316,11 @@ export default function ImageViewer({
 
               <ViewerFloatingToolbar
                 ref={toolbarRef}
-                className={mergeClassNames(
-                  imageClassName('toolbar', ''),
-                  isToolbarVisible
-                    ? 'opacity-100 pointer-events-auto'
-                    : 'opacity-0 pointer-events-none',
-                )}
+                className={imageClassName('toolbar', 'fv-floating-toolbar')}
                 style={imageStyle('toolbar')}
+                data-toolbar-visible={isToolbarVisible}
               >
-                <span
-                  ref={scaleRef}
-                  className="w-12 text-center text-sm font-medium text-white/90"
-                >
+                <span ref={scaleRef} className="fv-toolbar-scale-label">
                   100%
                 </span>
 
@@ -342,7 +335,7 @@ export default function ImageViewer({
                     onClick={() => zoomOut()}
                     aria-label={imageT.zoomOutAriaLabel}
                   >
-                    <ZoomOut className="size-5" />
+                    <ZoomOut className="fv-icon fv-icon--sm" />
                   </ViewerToolbarIconButton>
                 </FileViewerTooltip>
 
@@ -358,7 +351,7 @@ export default function ImageViewer({
                     }}
                     aria-label={imageT.fitScreenAriaLabel}
                   >
-                    <Scan className="size-5" />
+                    <Scan className="fv-icon fv-icon--sm" />
                   </ViewerToolbarIconButton>
                 </FileViewerTooltip>
 
@@ -371,7 +364,7 @@ export default function ImageViewer({
                     onClick={() => zoomIn()}
                     aria-label={imageT.zoomInAriaLabel}
                   >
-                    <ZoomIn className="size-5" />
+                    <ZoomIn className="fv-icon fv-icon--sm" />
                   </ViewerToolbarIconButton>
                 </FileViewerTooltip>
               </ViewerFloatingToolbar>

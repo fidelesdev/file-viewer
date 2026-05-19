@@ -4,40 +4,37 @@
  */
 
 /* Mozilla-style selection: highlight only, no visible glyph fill */
-.pdf-viewer .textLayer ::-moz-selection {
-  background: rgba(0, 0, 255, 0.25);
-  background: color-mix(in srgb, AccentColor, transparent 75%);
+.fv-pdf-viewer .textLayer ::-moz-selection {
+  background: var(--fv-pdf-text-selection);
   color: transparent;
 }
 
-.pdf-viewer .textLayer ::selection {
-  background: rgba(0, 0, 255, 0.25);
-  background: color-mix(in srgb, AccentColor, transparent 75%);
+.fv-pdf-viewer .textLayer ::selection {
+  background: var(--fv-pdf-text-selection);
   color: transparent;
   -webkit-text-fill-color: transparent;
 }
 
-.pdf-viewer .textLayer br::-moz-selection,
-.pdf-viewer .textLayer br::selection {
+.fv-pdf-viewer .textLayer br::-moz-selection,
+.fv-pdf-viewer .textLayer br::selection {
   background: transparent;
 }
 
-/* Hide misaligned text layer while canvas size catches up (canvas stays visible, scaled via layout) */
-.pdf-viewer [data-layout-syncing='true'] .textLayer {
+/* Hide misaligned text layer while canvas size catches up */
+.fv-pdf-viewer [data-layout-syncing='true'] .textLayer {
   opacity: 0;
   pointer-events: none;
 }
 
-/* Keep canvas visible and proportionally scaled while layout catches up */
-.pdf-viewer [data-layout-syncing='true'] canvas {
+.fv-pdf-viewer [data-layout-syncing='true'] .fv-pdf-page-canvas canvas {
   object-fit: contain;
 }
 
-/* Hide native scrollbars; custom ScrollAreaScrollbar is used instead */
-.pdf-viewer .pdf-scroll-viewport {
+/* Hide native scrollbars; custom scrollbar is used instead */
+.fv-pdf-viewer .fv-pdf-scroll-viewport {
   scrollbar-width: none;
 }
 
-.pdf-viewer .pdf-scroll-viewport::-webkit-scrollbar {
+.fv-pdf-viewer .fv-pdf-scroll-viewport::-webkit-scrollbar {
   display: none;
 }

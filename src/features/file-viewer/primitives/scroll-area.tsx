@@ -122,13 +122,13 @@ export const ScrollAreaViewport = forwardRef<HTMLDivElement, ScrollAreaViewportP
         ref={mergeRefs(forwardedRef, viewportRef)}
         onScroll={onScroll}
         className={mergeClassNames(
-          'size-full overflow-x-scroll overflow-y-scroll pdf-scroll-viewport',
+          'fv-scroll-viewport fv-pdf-scroll-viewport',
           className,
         )}
         {...rest}
       >
         <div
-          className="scroll-area-viewport-inner"
+          className="fv-scroll-viewport-inner"
           style={{ minWidth: '100%', display: 'table' }}
         >
           {children}

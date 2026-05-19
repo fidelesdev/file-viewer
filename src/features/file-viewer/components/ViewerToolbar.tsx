@@ -6,13 +6,11 @@ import type {
 import { getFileViewerDefaults } from '../config'
 import { mergeClassNames, mergeStyles } from '../utils/merge-slot-props'
 
-const VIEWER_TOOLBAR_DEFAULT =
-  'absolute bottom-4 left-1/2 z-10 flex h-[3.25rem] -translate-x-1/2 items-center gap-2 rounded-full border border-neutral-700/50 bg-neutral-900/60 px-4 text-white/90 shadow-lg backdrop-blur-sm transition-opacity duration-300'
+const VIEWER_TOOLBAR_DEFAULT = 'fv-floating-toolbar'
 
-const VIEWER_TOOLBAR_DIVIDER_DEFAULT = 'mx-1 h-full w-px bg-white/20'
+const VIEWER_TOOLBAR_DIVIDER_DEFAULT = 'fv-toolbar-divider'
 
-const VIEWER_TOOLBAR_ICON_BUTTON_DEFAULT =
-  'cursor-pointer rounded-full p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white/40'
+const VIEWER_TOOLBAR_ICON_BUTTON_DEFAULT = 'fv-toolbar-icon-button'
 
 export interface ViewerToolbarCustomization {
   classNames?: ViewerToolbarClassNames
@@ -23,12 +21,13 @@ export interface ViewerFloatingToolbarProps extends ViewerToolbarCustomization {
   children: ReactNode
   className?: string
   style?: CSSProperties
+  'data-toolbar-visible'?: boolean
 }
 
 export const ViewerFloatingToolbar = forwardRef<
   HTMLDivElement,
   ViewerFloatingToolbarProps
->(({ children, className = '', style, classNames, styles }, ref) => {
+>(({ children, className = '', style, classNames, styles, ...rest }, ref) => {
   const globalToolbar = getFileViewerDefaults().toolbar
 
   return (
@@ -41,6 +40,7 @@ export const ViewerFloatingToolbar = forwardRef<
         className,
       )}
       style={mergeStyles(globalToolbar?.styles?.toolbar, styles?.toolbar, style)}
+      {...rest}
     >
       {children}
     </div>

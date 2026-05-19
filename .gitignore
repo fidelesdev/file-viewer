@@ -1,6 +1,5 @@
 node_modules/
 dist/
-src/features/file-viewer/style.css
 playground-dist/
 *.local
 .DS_Store

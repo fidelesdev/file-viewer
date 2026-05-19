@@ -108,7 +108,7 @@ The `FileViewer` can be rendered in two modes:
 | `mode` | Behavior |
 | :--- | :--- |
 | **`inline`** (default) | Fills the parent container. The close button is hidden by default. A full-screen expand button is shown on the header. |
-| **`modal`** | Full-screen dialog overlay with a backdrop and focus-trap. Perfect for popups. |
+| **`modal`** | Full-screen dialog overlay with focus-trap. Close via header button or Escape. |
 
 ### Global Defaults
 You can configure global behaviors (like language or UI tweaks) once at app startup:
@@ -125,15 +125,15 @@ setFileViewerDefaults({
 
 **Merge priority:** Instance props > Global Defaults > Built-in defaults.
 
-### Styling (Tailwind & CSS)
-The library is built with Tailwind CSS v4 and ships its own CSS file (`dist/style.css`). Importing any component from the library will automatically inject this CSS into your bundle (via Vite, Webpack, or Next.js `transpilePackages`).
+### Styling (plain CSS)
+The library ships **plain CSS** as `dist/style.css` (no Tailwind in the published package). Importing any export from `@fdls/file-viewer` loads that stylesheet automatically (Vite, Webpack, Next.js with `transpilePackages`). It works alongside Tailwind v3/v4 or without Tailwind.
 
-If you need to override styles, use the `styles` or `classNames` prop available on all components:
+Override visuals with `styles` (`CSSProperties`) or extra `classNames` on each component:
 
 ```tsx
 <FileViewer
-  classNames={{ header: 'bg-blue-600 text-white' }}
-  dialogClassNames={{ panel: 'rounded-xl overflow-hidden' }}
+  styles={{ header: { backgroundColor: '#1e40af' } }}
+  classNames={{ header: 'my-app-viewer-header' }}
 />
 ```
 
@@ -163,7 +163,7 @@ The main shell component containing the header toolbar and the appropriate viewe
 | Prop | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `open` | `boolean` | — | Controlled visibility state |
-| `onOpenChange` | `(open: boolean) => void` | — | Callback when close button/backdrop is clicked |
+| `onOpenChange` | `(open: boolean) => void` | — | Callback when close button is clicked or Escape is pressed |
 | `url` | `string` | — | File URL |
 | `name` | `string` | — | Display name in the header |
 | `extension` | `string` | — | File extension (drives the viewer choice) |

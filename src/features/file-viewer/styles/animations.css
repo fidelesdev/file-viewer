@@ -1,0 +1,35 @@
+@keyframes fv-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fv-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fv-dialog-content[data-visible='true'] {
+  animation: fv-fade-in var(--fv-duration-fast) ease-out forwards;
+}
+
+.fv-dialog-content[data-visible='false'] {
+  animation: fv-fade-out var(--fv-duration-fast) ease-out forwards;
+}
+
+.fv-icon--spin {
+  animation: fv-spin 1s linear infinite;
+}

@@ -15,8 +15,7 @@ import {
 import { renderAsChild } from '../primitives/as-child'
 import { mergeClassNames, mergeStyles } from '../utils/merge-slot-props'
 
-const FILE_VIEWER_TOOLTIP_CONTENT_DEFAULT =
-  'select-none rounded-md border border-neutral-700/50 bg-neutral-900/75 px-2 py-1.5 text-xs text-white/90 shadow-lg backdrop-blur-sm'
+const FILE_VIEWER_TOOLTIP_CONTENT_DEFAULT = 'fv-tooltip-content'
 
 export function FileViewerTooltipProvider({
   children,
@@ -39,7 +38,7 @@ function TooltipDisabledTarget({ children }: { children: ReactElement }) {
   const closeActiveTooltip = useCloseActiveTooltip()
 
   return renderAsChild(true, children, {
-    className: 'pointer-events-auto',
+    className: 'fv-tooltip-disabled-target',
     onMouseEnter: () => closeActiveTooltip(),
     onFocus: () => closeActiveTooltip(),
   })

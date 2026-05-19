@@ -1,0 +1,28 @@
+.fv-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.fv-icon--sm {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.fv-icon--md {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.fv-icon--lg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.fv-icon--xl {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.fv-icon--white {
+  color: var(--fv-color-text);
+}

@@ -45,42 +45,32 @@ export type {
   FileViewerStyles,
 } from './customization-types'
 
-const FILE_VIEWER_DIALOG_BACKDROP_DEFAULT =
-  'fixed inset-0 z-[100] cursor-default border-0 bg-black/80 p-0 data-[visible=true]:animate-in data-[visible=false]:animate-out data-[visible=false]:fade-out-0 data-[visible=true]:fade-in-0'
+const FILE_VIEWER_DIALOG_CONTENT_DEFAULT = 'fv-dialog-content'
 
-const FILE_VIEWER_DIALOG_CONTENT_DEFAULT =
-  'fixed inset-0 z-[101] flex h-full w-full min-h-0 cursor-default flex-col border-none bg-transparent p-0 shadow-none outline-none pointer-events-none duration-200 data-[visible=true]:animate-in data-[visible=false]:animate-out data-[visible=false]:fade-out-0 data-[visible=true]:fade-in-0 focus:outline-none'
+const FILE_VIEWER_DIALOG_PANEL_DEFAULT = 'fv-dialog-panel'
 
-const FILE_VIEWER_DIALOG_PANEL_DEFAULT =
-  'pointer-events-auto flex h-full w-full min-h-0 flex-col overflow-hidden rounded-none border-0 bg-neutral-800/95 shadow-none'
+const FILE_VIEWER_ROOT_DEFAULT = 'fv-shell-root'
 
-const FILE_VIEWER_ROOT_DEFAULT =
-  'flex min-h-0 flex-1 flex-col overflow-hidden'
+const FILE_VIEWER_HEADER_DEFAULT = 'fv-shell-header'
 
-const FILE_VIEWER_HEADER_DEFAULT =
-  'flex w-full shrink-0 justify-between gap-2 rounded-t-lg p-4 font-medium text-white'
+const FILE_VIEWER_HEADER_TITLE_WRAP_DEFAULT = 'fv-shell-header-title-wrap'
 
-const FILE_VIEWER_HEADER_TITLE_WRAP_DEFAULT = 'flex items-center gap-2'
+const FILE_VIEWER_CLOSE_BUTTON_DEFAULT = 'fv-shell-close-button'
 
-const FILE_VIEWER_CLOSE_BUTTON_DEFAULT =
-  'cursor-pointer rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-white focus-visible:ring-offset-0 disabled:pointer-events-none'
+const FILE_VIEWER_TITLE_MODAL_DEFAULT = 'fv-shell-header-title'
 
-const FILE_VIEWER_TITLE_MODAL_DEFAULT = 'truncate'
+const FILE_VIEWER_TITLE_INLINE_DEFAULT =
+  'fv-shell-header-title fv-shell-header-title--inline'
 
-const FILE_VIEWER_TITLE_INLINE_DEFAULT = 'truncate font-semibold'
+const FILE_VIEWER_HEADER_ACTIONS_DEFAULT = 'fv-shell-header-actions'
 
-const FILE_VIEWER_HEADER_ACTIONS_DEFAULT = 'flex gap-3'
+const FILE_VIEWER_ACTION_BUTTON_DEFAULT = 'fv-shell-action-button'
 
-const FILE_VIEWER_ACTION_BUTTON_DEFAULT =
-  'cursor-pointer rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-white focus-visible:ring-offset-0'
+const FILE_VIEWER_ACTION_BUTTON_DOWNLOAD_DEFAULT = 'fv-shell-action-button'
 
-const FILE_VIEWER_ACTION_BUTTON_DOWNLOAD_DEFAULT =
-  'cursor-pointer rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-white focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-50'
+const FILE_VIEWER_VIEWER_DEFAULT = 'fv-shell-viewer'
 
-const FILE_VIEWER_VIEWER_DEFAULT =
-  'flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden text-white'
-
-const FILE_VIEWER_LOADER_DEFAULT = 'size-10 animate-spin'
+const FILE_VIEWER_LOADER_DEFAULT = 'fv-icon fv-icon--xl fv-icon--spin'
 
 function mergeFileViewerSlotClassName(
   builtIn: string,
@@ -207,11 +197,6 @@ export function FileViewer({
   const slotStyle = (key: keyof FileViewerStyles) =>
     mergeStyles(globalFileViewer?.styles?.[key], styles?.[key])
 
-  const backdropClasses = mergeFileViewerSlotClassName(
-    FILE_VIEWER_DIALOG_BACKDROP_DEFAULT,
-    globalFileViewer?.dialogClassNames?.backdrop,
-    dialogClassNames?.backdrop,
-  )
   const contentClasses = mergeFileViewerSlotClassName(
     FILE_VIEWER_DIALOG_CONTENT_DEFAULT,
     globalFileViewer?.dialogClassNames?.content,
@@ -223,10 +208,6 @@ export function FileViewer({
     dialogClassNames?.panel,
   )
 
-  const backdropStyle = mergeStyles(
-    globalFileViewer?.dialogStyles?.backdrop,
-    dialogStyles?.backdrop,
-  )
   const contentStyle = mergeStyles(
     globalFileViewer?.dialogStyles?.content,
     dialogStyles?.content,
@@ -243,7 +224,10 @@ export function FileViewer({
       <Suspense
         fallback={
           <LoaderCircle
-            className={slotClassName('loader', 'animate-spin size-10 text-white')}
+            className={slotClassName(
+              'loader',
+              'fv-icon fv-icon--xl fv-icon--spin fv-icon--white',
+            )}
             style={slotStyle('loader')}
           />
         }
@@ -260,7 +244,10 @@ export function FileViewer({
       <Suspense
         fallback={
           <LoaderCircle
-            className={slotClassName('loader', 'animate-spin size-10 text-white')}
+            className={slotClassName(
+              'loader',
+              'fv-icon fv-icon--xl fv-icon--spin fv-icon--white',
+            )}
             style={slotStyle('loader')}
           />
         }
@@ -326,7 +313,7 @@ export function FileViewer({
             className={slotClassName('closeButton', FILE_VIEWER_CLOSE_BUTTON_DEFAULT)}
             style={slotStyle('closeButton')}
           >
-            <X className="size-7" aria-hidden />
+            <X className="fv-icon fv-icon--lg" aria-hidden />
           </button>
         </Dialog.Close>
       )
@@ -340,7 +327,7 @@ export function FileViewer({
         className={slotClassName('closeButton', FILE_VIEWER_CLOSE_BUTTON_DEFAULT)}
         style={slotStyle('closeButton')}
       >
-        <X className="size-7" aria-hidden />
+        <X className="fv-icon fv-icon--lg" aria-hidden />
       </button>
     )
   }
@@ -404,7 +391,7 @@ export function FileViewer({
                     style={slotStyle('openInModalButton')}
                     aria-label={t.fileViewer.openInModalAriaLabel}
                   >
-                    <Maximize2 className="size-6" aria-hidden />
+                    <Maximize2 className="fv-icon fv-icon--md" aria-hidden />
                   </button>
                 </FileViewerTooltip>
               ) : null}
@@ -419,7 +406,7 @@ export function FileViewer({
                 style={slotStyle('printButton')}
                 aria-label={t.fileViewer.printAriaLabel}
               >
-                <Printer className="size-6" aria-hidden />
+                <Printer className="fv-icon fv-icon--md" aria-hidden />
               </button>
             </FileViewerTooltip>
             <FileViewerTooltip
@@ -448,9 +435,12 @@ export function FileViewer({
                 }
               >
                 {isDownloading ? (
-                  <LoaderCircle className="size-6 animate-spin" aria-hidden />
+                  <LoaderCircle
+                    className="fv-icon fv-icon--md fv-icon--spin"
+                    aria-hidden
+                  />
                 ) : (
-                  <Download className="size-6" aria-hidden />
+                  <Download className="fv-icon fv-icon--md" aria-hidden />
                 )}
               </button>
             </FileViewerTooltip>
@@ -494,16 +484,6 @@ export function FileViewer({
   ) => (
     <Dialog.Root open={modalOpen} onOpenChange={onModalOpenChange}>
       <Dialog.Portal>
-        <Dialog.Close asChild>
-          <button
-            type="button"
-            tabIndex={-1}
-            data-visible={modalOpen}
-            className={backdropClasses}
-            style={backdropStyle}
-            aria-hidden
-          />
-        </Dialog.Close>
         <Dialog.Content
           aria-describedby={undefined}
           className={contentClasses}
@@ -523,9 +503,9 @@ export function FileViewer({
 
   const printOnlyNode =
     isImage && url ? (
-      <div className="hidden">
+      <div className="fv-shell-print-hidden">
         <div ref={contentRef}>
-          <img src={url} className="max-h-[105dvh]" alt={name} />
+          <img src={url} className="fv-shell-print-image" alt={name} />
         </div>
       </div>
     ) : null

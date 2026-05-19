@@ -1,0 +1,13 @@
+/**
+ * Dev/playground entry: bundles all library styles (no Tailwind).
+ * Published build uses scripts/bundle-lib-css.mjs → dist/style.css
+ */
+@import '../pdf-viewer.css';
+@import './variables.css';
+@import './animations.css';
+@import './icons.css';
+@import './primitives.css';
+@import './file-viewer-shell.css';
+@import './toolbar.css';
+@import './image-viewer.css';
+@import './pdf-viewer-layout.css';

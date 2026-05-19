@@ -23,7 +23,6 @@ import {
   useState,
 } from 'react'
 import { Document, Page } from 'react-pdf'
-import './pdf-viewer.css'
 import {
   FileViewerTooltip,
   FileViewerTooltipProvider,
@@ -46,31 +45,35 @@ import { mergeClassNames } from './utils/merge-slot-props'
 
 export type { PdfViewerClassNames, PdfViewerStyles } from './customization-types'
 
-const PDF_VIEWER_ROOT_DEFAULT =
-  'pdf-viewer flex flex-col items-center gap-4 w-full h-full max-h-full overflow-hidden relative'
+const PDF_VIEWER_ROOT_DEFAULT = 'fv-pdf-viewer'
 
-const PDF_SCROLL_AREA_DEFAULT = 'size-full min-h-0 min-w-0'
+const PDF_SCROLL_AREA_DEFAULT = 'fv-pdf-scroll-area fv-scroll-area-root'
 
-const PDF_SCROLL_VIEWPORT_DEFAULT =
-  'w-full h-full rounded-[inherit] [&>div]:min-h-full'
+const PDF_SCROLL_VIEWPORT_DEFAULT = 'fv-pdf-scroll-viewport'
 
-const PDF_SCROLLBAR_VERTICAL_DEFAULT =
-  'flex flex-col touch-none select-none transition-colors w-4 border-l border-l-transparent p-0.5 hover:bg-black/10 z-20'
+const PDF_SCROLLBAR_VERTICAL_DEFAULT = 'fv-scrollbar--vertical'
 
-const PDF_SCROLLBAR_HORIZONTAL_DEFAULT =
-  'flex flex-col touch-none select-none transition-colors h-4 border-t border-t-transparent p-0.5 hover:bg-black/10 z-20'
+const PDF_SCROLLBAR_HORIZONTAL_DEFAULT = 'fv-scrollbar--horizontal'
 
-const PDF_SCROLLBAR_THUMB_DEFAULT =
-  'relative shrink-0 rounded-full bg-neutral-500/50 hover:bg-neutral-500/80'
+const PDF_SCROLLBAR_THUMB_DEFAULT = 'fv-scrollbar-thumb'
 
-const PDF_PAGE_DEFAULT =
-  'relative flex shrink-0 items-center justify-center overflow-hidden m-auto'
+const PDF_PAGE_DEFAULT = 'fv-pdf-page'
 
-const PDF_PAGE_INNER_DEFAULT =
-  'relative flex h-full w-full items-center justify-center overflow-hidden bg-white shadow-lg'
+const PDF_PAGE_INNER_DEFAULT = 'fv-pdf-page-inner'
 
-const PDF_PAGE_INPUT_DEFAULT =
-  'w-10 bg-transparent text-center focus:outline-none transition-colors'
+const CONTINUOUS_PAGE_GAP_PX = 16
+
+/** While programmatic nav runs, IO must not overwrite pageNumber (many pages visible at low zoom). */
+const PROGRAMMATIC_NAV_SUPPRESS_MS = 900
+
+/** rAF frames to re-apply scroll anchor while layout height changes during zoom. */
+const ZOOM_SCROLL_SYNC_FRAMES = 45
+
+const PDF_PAGE_INPUT_DEFAULT = 'fv-pagination-input'
+
+const PDF_PAGE_CANVAS_DEFAULT = 'fv-pdf-page-canvas'
+
+const PDF_PAGE_ZOOM_TRANSITION_CLASS = 'fv-pdf-page--zoom-transition'
 
 export type PdfViewMode = 'single' | 'continuous'
 
@@ -203,19 +206,150 @@ export default function PdfViewer(props: PdfViewerProps) {
   // If not, we don't apply CSS transitions to avoid initial layout jank from placeholders.
   const [hasZoomed, setHasZoomed] = useState(false)
 
+  const isPreservingScrollRef = useRef(false)
+  const scrollAnchorSyncActiveRef = useRef(false)
+  const userOverrodeScrollDuringZoomRef = useRef(false)
+  const ignoreNextScrollEventRef = useRef(false)
+  const lastProgrammaticScrollTopRef = useRef<number | null>(null)
+  const lastAppliedScrollHeightRef = useRef(0)
+  /** Viewport center as a fraction of scrollable content (zoom focal point). */
+  const scrollAnchorRef = useRef({ ratioY: 0, ratioX: 0 })
+  const zoomAnimFrameRef = useRef<number | null>(null)
+
+  const captureScrollAnchor = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const centerY = container.scrollTop + container.clientHeight / 2
+    const centerX = container.scrollLeft + container.clientWidth / 2
+
+    scrollAnchorRef.current = {
+      ratioY:
+        container.scrollHeight > 0 ? centerY / container.scrollHeight : 0,
+      ratioX:
+        container.scrollWidth > 0 ? centerX / container.scrollWidth : 0,
+    }
+  }, [])
+
+  const applyScrollAnchor = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const newCenterY =
+      container.scrollHeight * scrollAnchorRef.current.ratioY
+    const newCenterX =
+      container.scrollWidth * scrollAnchorRef.current.ratioX
+
+    const nextTop = newCenterY - container.clientHeight / 2
+    const nextLeft = newCenterX - container.clientWidth / 2
+
+    if (Math.abs(container.scrollTop - nextTop) > 0.5) {
+      container.scrollTop = nextTop
+      lastProgrammaticScrollTopRef.current = nextTop
+      ignoreNextScrollEventRef.current = true
+    }
+    if (Math.abs(container.scrollLeft - nextLeft) > 0.5) {
+      container.scrollLeft = nextLeft
+    }
+  }, [])
+
+  const cancelScrollAnchorSync = useCallback(() => {
+    if (zoomAnimFrameRef.current !== null) {
+      cancelAnimationFrame(zoomAnimFrameRef.current)
+      zoomAnimFrameRef.current = null
+    }
+    scrollAnchorSyncActiveRef.current = false
+    isPreservingScrollRef.current = false
+    lastProgrammaticScrollTopRef.current = null
+  }, [])
+
+  const releaseScrollAnchorToUser = useCallback(() => {
+    userOverrodeScrollDuringZoomRef.current = true
+    cancelScrollAnchorSync()
+  }, [cancelScrollAnchorSync])
+
+  const runScrollAnchorSync = useCallback(() => {
+    if (userOverrodeScrollDuringZoomRef.current) return
+
+    const container = containerRef.current
+    if (!container) return
+
+    scrollAnchorSyncActiveRef.current = true
+    isPreservingScrollRef.current = true
+    lastAppliedScrollHeightRef.current = container.scrollHeight
+
+    if (zoomAnimFrameRef.current !== null) {
+      cancelAnimationFrame(zoomAnimFrameRef.current)
+    }
+
+    let frame = 0
+    let stableFrames = 0
+
+    const step = () => {
+      if (userOverrodeScrollDuringZoomRef.current) {
+        cancelScrollAnchorSync()
+        return
+      }
+
+      const currentContainer = containerRef.current
+      if (!currentContainer) {
+        cancelScrollAnchorSync()
+        return
+      }
+
+      const scrollHeight = currentContainer.scrollHeight
+      if (scrollHeight !== lastAppliedScrollHeightRef.current) {
+        applyScrollAnchor()
+        lastAppliedScrollHeightRef.current = scrollHeight
+        stableFrames = 0
+      } else {
+        stableFrames += 1
+      }
+
+      frame += 1
+      if (
+        stableFrames >= 3 ||
+        frame >= ZOOM_SCROLL_SYNC_FRAMES
+      ) {
+        cancelScrollAnchorSync()
+        return
+      }
+
+      zoomAnimFrameRef.current = requestAnimationFrame(step)
+    }
+
+    applyScrollAnchor()
+    zoomAnimFrameRef.current = requestAnimationFrame(step)
+  }, [applyScrollAnchor, cancelScrollAnchorSync])
+
+  useEffect(() => {
+    return () => {
+      cancelScrollAnchorSync()
+    }
+  }, [cancelScrollAnchorSync])
+
   // Reset zoom and clear cached heights when URL or view mode changes
   useEffect(() => {
     setInstantZoom(1)
     setRenderedZoom(1)
     setHasZoomed(false)
+    userOverrodeScrollDuringZoomRef.current = false
+    cancelScrollAnchorSync()
     renderedHeights.current.clear()
-  }, [url, viewMode])
+  }, [url, viewMode, cancelScrollAnchorSync])
 
   useEffect(() => {
     if (instantZoom === renderedZoom) return
     const timerId = window.setTimeout(() => {
+      const zoomRatio = instantZoom / renderedZoom
+      if (renderedHeights.current.size > 0 && Number.isFinite(zoomRatio)) {
+        for (const [page, height] of renderedHeights.current.entries()) {
+          renderedHeights.current.set(page, Math.trunc(height * zoomRatio))
+        }
+      } else {
+        renderedHeights.current.clear()
+      }
       setRenderedZoom(instantZoom)
-      renderedHeights.current.clear()
     }, zoomDebounceDelay)
     return () => window.clearTimeout(timerId)
   }, [instantZoom, renderedZoom, zoomDebounceDelay])
@@ -224,6 +358,7 @@ export default function PdfViewer(props: PdfViewerProps) {
   // input value at the target page so it doesn't tick through every page crossed during the scroll.
   const pendingInputPageRef = useRef<number | null>(null)
   const pendingInputPageTimerRef = useRef<number | null>(null)
+  const suppressObserverPageSyncUntilRef = useRef(0)
 
   // Sync input with page number (skips while a programmatic navigation is in flight)
   useEffect(() => {
@@ -378,6 +513,85 @@ export default function PdfViewer(props: PdfViewerProps) {
     layoutScale,
   ])
 
+  useEffect(() => {
+    if (!hasZoomed || userOverrodeScrollDuringZoomRef.current) return
+    runScrollAnchorSync()
+  }, [hasZoomed, renderedZoom, runScrollAnchorSync])
+
+  useEffect(() => {
+    if (
+      !hasZoomed ||
+      userOverrodeScrollDuringZoomRef.current ||
+      isLayoutSyncing
+    ) {
+      return
+    }
+    runScrollAnchorSync()
+  }, [hasZoomed, isLayoutSyncing, runScrollAnchorSync])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || !hasZoomed) return
+
+    const isZoomLayoutInProgress =
+      instantZoom !== renderedZoom || isLayoutSyncing
+
+    const handleUserScrollIntent = () => {
+      if (
+        scrollAnchorSyncActiveRef.current ||
+        isZoomLayoutInProgress
+      ) {
+        releaseScrollAnchorToUser()
+      }
+    }
+
+    const handleScroll = () => {
+      if (ignoreNextScrollEventRef.current) {
+        ignoreNextScrollEventRef.current = false
+        return
+      }
+
+      if (!scrollAnchorSyncActiveRef.current) return
+
+      const expectedTop = lastProgrammaticScrollTopRef.current
+      if (expectedTop === null) return
+
+      if (Math.abs(container.scrollTop - expectedTop) > 3) {
+        releaseScrollAnchorToUser()
+      }
+    }
+
+    container.addEventListener('wheel', handleUserScrollIntent, {
+      passive: true,
+    })
+    container.addEventListener('pointerdown', handleUserScrollIntent, {
+      passive: true,
+    })
+    container.addEventListener('touchstart', handleUserScrollIntent, {
+      passive: true,
+    })
+    container.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      container.removeEventListener('wheel', handleUserScrollIntent)
+      container.removeEventListener('pointerdown', handleUserScrollIntent)
+      container.removeEventListener('touchstart', handleUserScrollIntent)
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }, [
+    hasZoomed,
+    instantZoom,
+    renderedZoom,
+    isLayoutSyncing,
+    releaseScrollAnchorToUser,
+  ])
+
+  useEffect(() => {
+    if (instantZoom === renderedZoom && !isLayoutSyncing) {
+      userOverrodeScrollDuringZoomRef.current = false
+    }
+  }, [instantZoom, renderedZoom, isLayoutSyncing])
+
   // --- PDF Callbacks ---
   const handleDocumentLoadSuccess = ({
     numPages: loadedNumPages,
@@ -407,6 +621,13 @@ export default function PdfViewer(props: PdfViewerProps) {
 
     // Store exact height for this specific page when it unmounts into a placeholder
     renderedHeights.current.set(pageIndex, Math.trunc(page.height))
+
+    if (
+      isPreservingScrollRef.current &&
+      !userOverrodeScrollDuringZoomRef.current
+    ) {
+      requestAnimationFrame(() => applyScrollAnchor())
+    }
   }
 
   // --- Page Navigation & Lazy Loading ---
@@ -419,62 +640,110 @@ export default function PdfViewer(props: PdfViewerProps) {
     [onPageChange],
   )
 
+  const scrollToContinuousPage = useCallback(
+    (targetPage: number, options?: { lockInputUntilArrived?: boolean }) => {
+      const validPage = Math.max(1, Math.min(targetPage, numPages || 1))
+      suppressObserverPageSyncUntilRef.current =
+        performance.now() + PROGRAMMATIC_NAV_SUPPRESS_MS
+
+      setPage(validPage)
+
+      if (options?.lockInputUntilArrived) {
+        pendingInputPageRef.current = validPage
+        setInputPage(String(validPage))
+        if (pendingInputPageTimerRef.current !== null) {
+          window.clearTimeout(pendingInputPageTimerRef.current)
+        }
+        pendingInputPageTimerRef.current = window.setTimeout(() => {
+          pendingInputPageRef.current = null
+          pendingInputPageTimerRef.current = null
+          setInputPage(String(pageNumberRef.current))
+        }, PROGRAMMATIC_NAV_SUPPRESS_MS + 200)
+      } else {
+        setInputPage(String(validPage))
+      }
+
+      setVisibleRange((prev) => ({
+        start: Math.max(1, Math.min(prev.start, validPage) - preloadAhead),
+        end: Math.min(
+          numPages || validPage,
+          Math.max(prev.end, validPage) + preloadAhead,
+        ),
+      }))
+
+      const scrollToPageElement = (attempt = 0) => {
+        const element = pageRefs.current.get(validPage)
+        const container = containerRef.current
+
+        if (element) {
+          element.scrollIntoView({
+            behavior: 'smooth' as ScrollBehavior,
+            block: 'start',
+          })
+          return
+        }
+
+        if (container && numPages > 0 && attempt >= 1) {
+          const defaultPageHeight = zoomedRenderedDimensions.height ?? 0
+          let offset = 0
+          for (let page = 1; page < validPage; page++) {
+            const renderedPageHeight =
+              renderedHeights.current.get(page) ?? defaultPageHeight
+            const slotHeight = Math.trunc(renderedPageHeight * layoutScale)
+            offset += slotHeight + CONTINUOUS_PAGE_GAP_PX
+          }
+          container.scrollTo({ top: offset, behavior: 'smooth' })
+          return
+        }
+
+        if (attempt < 40) {
+          requestAnimationFrame(() => scrollToPageElement(attempt + 1))
+        }
+      }
+
+      requestAnimationFrame(() => scrollToPageElement())
+    },
+    [
+      numPages,
+      preloadAhead,
+      setPage,
+      layoutScale,
+      zoomedRenderedDimensions.height,
+    ],
+  )
+
   const previousPage = useCallback(() => {
     if (pendingInputPageRef.current !== null) return
 
     const p = Math.max(pageNumber - 1, 1)
     if (viewMode === 'continuous') {
-      setTimeout(() => {
-        pageRefs.current
-          .get(p)
-          ?.scrollIntoView({ behavior: 'smooth' as ScrollBehavior, block: 'start' })
-      }, 10)
+      scrollToContinuousPage(p)
     } else {
       setPage(p)
     }
-  }, [pageNumber, viewMode, setPage])
+  }, [pageNumber, viewMode, setPage, scrollToContinuousPage])
 
   const nextPage = useCallback(() => {
     if (pendingInputPageRef.current !== null) return
 
     const p = Math.min(pageNumber + 1, numPages || 1)
     if (viewMode === 'continuous') {
-      setTimeout(() => {
-        pageRefs.current
-          .get(p)
-          ?.scrollIntoView({ behavior: 'smooth' as ScrollBehavior, block: 'start' })
-      }, 10)
+      scrollToContinuousPage(p)
     } else {
       setPage(p)
     }
-  }, [pageNumber, numPages, viewMode, setPage])
+  }, [pageNumber, numPages, viewMode, setPage, scrollToContinuousPage])
 
   const goToPage = useCallback(
     (p: number) => {
       const validPage = Math.max(1, Math.min(p, numPages || 1))
       if (viewMode === 'continuous') {
-        // Lock the input value at the target page while the scroll is in progress,
-        // so the displayed number doesn't tick through intermediate pages.
-        pendingInputPageRef.current = validPage
-        setInputPage(String(validPage))
-        if (pendingInputPageTimerRef.current !== null) {
-          window.clearTimeout(pendingInputPageTimerRef.current)
-        }
-        // Safety fallback: if the user interrupts the scroll, release the lock after 750ms
-        pendingInputPageTimerRef.current = window.setTimeout(() => {
-          pendingInputPageRef.current = null
-          pendingInputPageTimerRef.current = null
-          setInputPage(String(pageNumberRef.current))
-        }, 750)
-        // Small timeout to allow React to render the placeholder/page before scrolling
-        setTimeout(() => {
-          pageRefs.current.get(validPage)?.scrollIntoView({ behavior: 'smooth' as ScrollBehavior, block: 'start' })
-        }, 10)
+        scrollToContinuousPage(validPage, { lockInputUntilArrived: true })
       } else {
         setPage(validPage)
       }
     },
-    [numPages, viewMode, setPage],
+    [numPages, viewMode, setPage, scrollToContinuousPage],
   )
 
   // --- Continuous Mode Observer ---
@@ -484,9 +753,6 @@ export default function PdfViewer(props: PdfViewerProps) {
   useEffect(() => {
     pageNumberRef.current = pageNumber
   }, [pageNumber])
-
-  const CONTINUOUS_PAGE_GAP_PX = 16
-  const isPreservingScrollRef = useRef(false)
 
   const updateVisiblePagesFromScroll = useCallback(() => {
     const container = containerRef.current
@@ -591,11 +857,20 @@ export default function PdfViewer(props: PdfViewerProps) {
           }
         })
 
-        if (bestPage > 0 && bestRatio > 0 && bestPage !== pageNumberRef.current) {
+        if (
+          bestPage > 0 &&
+          bestRatio > 0 &&
+          bestPage !== pageNumberRef.current &&
+          performance.now() >= suppressObserverPageSyncUntilRef.current
+        ) {
           setPage(bestPage)
         }
 
-        if (minVisible !== Infinity && maxVisible !== -Infinity) {
+        if (
+          !isPreservingScrollRef.current &&
+          minVisible !== Infinity &&
+          maxVisible !== -Infinity
+        ) {
           setVisibleRange((prev) => {
             if (prev.start !== minVisible || prev.end !== maxVisible) {
               return { start: minVisible, end: maxVisible }
@@ -619,79 +894,29 @@ export default function PdfViewer(props: PdfViewerProps) {
   }, [numPages, viewMode, setPage])
 
   // --- Zoom Actions ---
-  const scrollRatioRef = useRef({ x: 0, y: 0 })
-  const zoomAnimFrameRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (zoomAnimFrameRef.current !== null) {
-        cancelAnimationFrame(zoomAnimFrameRef.current)
-      }
-    }
-  }, [])
-
-  const preserveScrollPosition = useCallback(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    isPreservingScrollRef.current = true
-
-    // Calculate the center point of the current viewport relative to the total scrollable content
-    const centerY = container.scrollTop + container.clientHeight / 2
-    const ratioY = container.scrollHeight > 0 ? centerY / container.scrollHeight : 0
-
-    const centerX = container.scrollLeft + container.clientWidth / 2
-    const ratioX = container.scrollWidth > 0 ? centerX / container.scrollWidth : 0
-
-    scrollRatioRef.current = { x: ratioX, y: ratioY }
-
-    if (zoomAnimFrameRef.current !== null) {
-      cancelAnimationFrame(zoomAnimFrameRef.current)
-    }
-
-    const startTime = performance.now()
-    const duration = 250 // slightly longer than CSS transition (200ms) to ensure it catches the end
-
-    const step = (time: number) => {
-      const currentContainer = containerRef.current
-      if (!currentContainer) return
-
-      // Find the new center point based on the updated scrollHeight/Width
-      const newCenterY = currentContainer.scrollHeight * scrollRatioRef.current.y
-      const newCenterX = currentContainer.scrollWidth * scrollRatioRef.current.x
-
-      // Adjust scrollTop/Left so that the new center point is in the middle of the viewport
-      currentContainer.scrollTop = newCenterY - currentContainer.clientHeight / 2
-      currentContainer.scrollLeft = newCenterX - currentContainer.clientWidth / 2
-
-      if (time - startTime < duration) {
-        zoomAnimFrameRef.current = requestAnimationFrame(step)
-      } else {
-        zoomAnimFrameRef.current = null
-        isPreservingScrollRef.current = false
-      }
-    }
-
-    zoomAnimFrameRef.current = requestAnimationFrame(step)
-  }, [])
-
   const handleZoomIn = useCallback(() => {
     setHasZoomed(true)
-    preserveScrollPosition()
+    userOverrodeScrollDuringZoomRef.current = false
+    captureScrollAnchor()
     setInstantZoom((prev) => Math.min(prev * 1.3, 4))
-  }, [preserveScrollPosition])
+    runScrollAnchorSync()
+  }, [captureScrollAnchor, runScrollAnchorSync])
 
   const handleZoomOut = useCallback(() => {
     setHasZoomed(true)
-    preserveScrollPosition()
+    userOverrodeScrollDuringZoomRef.current = false
+    captureScrollAnchor()
     setInstantZoom((prev) => Math.max(prev / 1.3, 0.5))
-  }, [preserveScrollPosition])
+    runScrollAnchorSync()
+  }, [captureScrollAnchor, runScrollAnchorSync])
 
   const handleZoomReset = useCallback(() => {
     setHasZoomed(true)
-    preserveScrollPosition()
+    userOverrodeScrollDuringZoomRef.current = false
+    captureScrollAnchor()
     setInstantZoom(1)
-  }, [preserveScrollPosition])
+    runScrollAnchorSync()
+  }, [captureScrollAnchor, runScrollAnchorSync])
 
   const zoomOutDisabled = instantZoom <= 0.501
   const zoomInDisabled = instantZoom >= 3.99
@@ -719,7 +944,7 @@ export default function PdfViewer(props: PdfViewerProps) {
     // Default pagination
     const paginationBody = (
       <>
-        <div className="bg-black/20 rounded px-1 flex items-center justify-center">
+        <div className="fv-pagination-input-wrap">
           <input
             type="text"
             inputMode="numeric"
@@ -755,7 +980,7 @@ export default function PdfViewer(props: PdfViewerProps) {
             })}
           />
         </div>
-        <span className="opacity-60 mx-1">/</span>
+        <span className="fv-pagination-separator">/</span>
         <span>{numPages}</span>
       </>
     )
@@ -763,13 +988,9 @@ export default function PdfViewer(props: PdfViewerProps) {
     return (
       <ViewerFloatingToolbar
         ref={toolbarRef}
-        className={mergeClassNames(
-          pdfClassName('pagination', ''),
-          isToolbarVisible
-            ? 'opacity-100 pointer-events-auto'
-            : 'opacity-0 pointer-events-none',
-        )}
+        className={pdfClassName('pagination', 'fv-floating-toolbar')}
         style={pdfStyle('pagination')}
+        data-toolbar-visible={isToolbarVisible}
       >
         <FileViewerTooltip
           content={pdfT.previousPageTooltip}
@@ -780,7 +1001,7 @@ export default function PdfViewer(props: PdfViewerProps) {
             onClick={previousPage}
             aria-label={pdfT.previousPageAriaLabel}
           >
-            <ChevronLeft className="h-5 w-5" aria-hidden />
+            <ChevronLeft className="fv-icon fv-icon--sm" aria-hidden />
           </ViewerToolbarIconButton>
         </FileViewerTooltip>
 
@@ -795,7 +1016,7 @@ export default function PdfViewer(props: PdfViewerProps) {
             onClick={nextPage}
             aria-label={pdfT.nextPageAriaLabel}
           >
-            <ChevronRight className="h-5 w-5" aria-hidden />
+            <ChevronRight className="fv-icon fv-icon--sm" aria-hidden />
           </ViewerToolbarIconButton>
         </FileViewerTooltip>
 
@@ -810,7 +1031,7 @@ export default function PdfViewer(props: PdfViewerProps) {
             onClick={handleZoomOut}
             aria-label={pdfT.zoomOutAriaLabel}
           >
-            <ZoomOut className="h-5 w-5" />
+            <ZoomOut className="fv-icon fv-icon--sm" />
           </ViewerToolbarIconButton>
         </FileViewerTooltip>
 
@@ -823,7 +1044,7 @@ export default function PdfViewer(props: PdfViewerProps) {
             onClick={handleZoomReset}
             aria-label={pdfT.fitWidthAriaLabel}
           >
-            <Scan className="h-5 w-5" />
+            <Scan className="fv-icon fv-icon--sm" />
           </ViewerToolbarIconButton>
         </FileViewerTooltip>
 
@@ -836,7 +1057,7 @@ export default function PdfViewer(props: PdfViewerProps) {
             onClick={handleZoomIn}
             aria-label={pdfT.zoomInAriaLabel}
           >
-            <ZoomIn className="h-5 w-5" />
+            <ZoomIn className="fv-icon fv-icon--sm" />
           </ViewerToolbarIconButton>
         </FileViewerTooltip>
       </ViewerFloatingToolbar>
@@ -844,9 +1065,7 @@ export default function PdfViewer(props: PdfViewerProps) {
   }
 
   const pageTransitionClass =
-    hasZoomed && pageOriginalSize.width
-      ? 'transition-[width,height] duration-200 ease-out'
-      : ''
+    hasZoomed && pageOriginalSize.width ? PDF_PAGE_ZOOM_TRANSITION_CLASS : ''
 
   return (
     <FileViewerTooltipProvider>
@@ -860,19 +1079,16 @@ export default function PdfViewer(props: PdfViewerProps) {
         >
         <ScrollAreaViewport
           ref={containerRef}
-          className={pdfClassName(
-            'scrollViewport',
-            `${PDF_SCROLL_VIEWPORT_DEFAULT} pdf-scroll-viewport`,
-          )}
+          className={pdfClassName('scrollViewport', PDF_SCROLL_VIEWPORT_DEFAULT)}
           style={pdfStyle('scrollViewport')}
         >
-          <div className="flex min-h-full min-w-full flex-col">
+          <div className="fv-pdf-document-inner">
             <Document
               file={url}
               onLoadSuccess={handleDocumentLoadSuccess}
               onLoadError={handleDocumentLoadError}
               loading={renderLoading}
-              className="flex w-full flex-col gap-4"
+              className="fv-pdf-document"
             >
               {viewMode === 'single' &&
               zoomedRenderedDimensions.width &&
@@ -902,7 +1118,7 @@ export default function PdfViewer(props: PdfViewerProps) {
                       }
                       renderTextLayer={renderTextLayer}
                       renderAnnotationLayer={renderAnnotationLayer}
-                      className="flex h-full w-full shrink flex-1 items-center justify-center !bg-transparent [&_canvas]:!h-full [&_canvas]:!w-full"
+                      className={PDF_PAGE_CANVAS_DEFAULT}
                       renderMode="canvas"
                       width={zoomedRenderedDimensions.width}
                       loading={null}
@@ -939,7 +1155,7 @@ export default function PdfViewer(props: PdfViewerProps) {
                       ? {
                           width: slotWidth,
                           height: slotHeight,
-                          backgroundColor: '#80808040',
+                          backgroundColor: 'var(--fv-bg-page-placeholder)',
                         }
                       : {
                           width: slotWidth,
@@ -977,7 +1193,7 @@ export default function PdfViewer(props: PdfViewerProps) {
                             }
                             renderTextLayer={renderTextLayer}
                             renderAnnotationLayer={renderAnnotationLayer}
-                            className="flex h-full w-full shrink flex-1 items-center justify-center !bg-transparent [&_canvas]:!h-full [&_canvas]:!w-full"
+                            className={PDF_PAGE_CANVAS_DEFAULT}
                             renderMode="canvas"
                             width={zoomedRenderedDimensions.width}
                             loading={null}
@@ -1013,7 +1229,7 @@ export default function PdfViewer(props: PdfViewerProps) {
             style={pdfStyle('scrollbarThumb')}
           />
         </ScrollAreaScrollbar>
-        <ScrollAreaCorner className="bg-transparent" />
+        <ScrollAreaCorner className="fv-scroll-corner" />
       </ScrollAreaRoot>
 
       {renderPaginationElement()}

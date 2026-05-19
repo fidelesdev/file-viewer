@@ -1,0 +1,105 @@
+.fv-floating-toolbar {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  z-index: var(--fv-z-toolbar);
+  display: flex;
+  height: var(--fv-toolbar-height);
+  transform: translateX(-50%);
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: var(--fv-radius-full);
+  border: 1px solid var(--fv-border-toolbar);
+  background: var(--fv-bg-toolbar);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  color: var(--fv-color-text-muted);
+  box-shadow: var(--fv-shadow-lg);
+  backdrop-filter: blur(4px);
+  transition: opacity var(--fv-duration-medium);
+}
+
+.fv-floating-toolbar[data-toolbar-visible='true'],
+.fv-floating-toolbar:not([data-toolbar-visible]) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fv-floating-toolbar[data-toolbar-visible='false'] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fv-toolbar-divider {
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
+  height: 100%;
+  width: 1px;
+  background: var(--fv-color-text-muted-20);
+}
+
+.fv-toolbar-icon-button {
+  cursor: pointer;
+  border-radius: var(--fv-radius-full);
+  padding: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--fv-color-text-muted-70);
+  transition:
+    color var(--fv-duration-fast),
+    background-color var(--fv-duration-fast);
+}
+
+.fv-toolbar-icon-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--fv-color-text);
+}
+
+.fv-toolbar-icon-button:disabled {
+  pointer-events: none;
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.fv-toolbar-icon-button:disabled:hover {
+  background: transparent;
+  color: var(--fv-color-text-muted-40);
+}
+
+.fv-toolbar-scale-label {
+  width: 3rem;
+  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--fv-color-text-muted);
+}
+
+.fv-pagination-input-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--fv-radius-sm);
+  background: var(--fv-bg-pagination-input);
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+.fv-pagination-input {
+  width: 2.5rem;
+  background: transparent;
+  text-align: center;
+  border: none;
+  color: inherit;
+  font: inherit;
+}
+
+.fv-pagination-input:focus {
+  outline: none;
+}
+
+.fv-pagination-separator {
+  opacity: 0.6;
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
+}

@@ -1,6 +1,6 @@
 {
   "name": "@fdls/file-viewer",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": false,
   "description": "React components for in-app file preview: shell (FileViewer), PDF viewer, and image pan/zoom. No Radix UI or icon library peer dependencies.",
   "license": "MIT",
@@ -52,8 +52,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "build:css": "tailwindcss -i ./src/styles/index.css -o ./src/features/file-viewer/style.css --minify",
-    "build:lib": "npm run build:css && tsup && cp src/features/file-viewer/style.css dist/style.css && node scripts/prepend-style-import.mjs",
+    "build:lib": "tsup && node scripts/bundle-lib-css.mjs && node scripts/prepend-style-import.mjs",
     "prepublishOnly": "npm run build:lib",
     "preview": "vite preview --outDir playground-dist"
   },

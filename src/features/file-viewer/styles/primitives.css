@@ -1,0 +1,129 @@
+/* Dialog */
+.fv-dialog-content {
+  position: fixed;
+  inset: 0;
+  z-index: var(--fv-z-dialog-content);
+  display: flex;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  cursor: default;
+  flex-direction: column;
+  border: none;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  outline: none;
+  pointer-events: none;
+  transition-duration: var(--fv-duration-fast);
+}
+
+.fv-dialog-content:focus {
+  outline: none;
+}
+
+.fv-dialog-panel {
+  pointer-events: auto;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0;
+  border: 0;
+  background: var(--fv-bg-panel);
+  box-shadow: none;
+}
+
+/* Tooltip (positioning shell) */
+.fv-tooltip-shell {
+  pointer-events: none;
+  position: fixed;
+  z-index: var(--fv-z-tooltip);
+  width: max-content;
+  max-width: 20rem;
+  transition: opacity var(--fv-duration-fast);
+}
+
+.fv-tooltip-content {
+  user-select: none;
+  border-radius: var(--fv-radius-md);
+  border: 1px solid var(--fv-border-tooltip);
+  background: var(--fv-bg-tooltip);
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--fv-color-text-muted);
+  box-shadow: var(--fv-shadow-lg);
+  backdrop-filter: blur(4px);
+}
+
+.fv-tooltip-disabled-target {
+  pointer-events: auto;
+}
+
+/* Scroll area */
+.fv-scroll-area-root {
+  position: relative;
+  overflow: hidden;
+}
+
+.fv-scroll-viewport {
+  width: 100%;
+  height: 100%;
+  overflow-x: scroll;
+  overflow-y: scroll;
+}
+
+.fv-scroll-viewport-inner {
+  min-width: 100%;
+  display: table;
+}
+
+.fv-scrollbar--vertical {
+  display: flex;
+  flex-direction: column;
+  touch-action: none;
+  user-select: none;
+  transition: background-color var(--fv-duration-fast);
+  width: 1rem;
+  border-left: 1px solid transparent;
+  padding: 0.125rem;
+  z-index: var(--fv-z-scrollbar);
+}
+
+.fv-scrollbar--vertical:hover {
+  background: var(--fv-bg-scrollbar-hover);
+}
+
+.fv-scrollbar--horizontal {
+  display: flex;
+  flex-direction: column;
+  touch-action: none;
+  user-select: none;
+  transition: background-color var(--fv-duration-fast);
+  height: 1rem;
+  border-top: 1px solid transparent;
+  padding: 0.125rem;
+  z-index: var(--fv-z-scrollbar);
+}
+
+.fv-scrollbar--horizontal:hover {
+  background: var(--fv-bg-scrollbar-hover);
+}
+
+.fv-scrollbar-thumb {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: var(--fv-radius-full);
+  background: var(--fv-bg-thumb);
+}
+
+.fv-scrollbar-thumb:hover {
+  background: var(--fv-bg-thumb-hover);
+}
+
+.fv-scroll-corner {
+  background: transparent;
+}

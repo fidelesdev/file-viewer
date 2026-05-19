@@ -1,0 +1,42 @@
+.fv-image-root {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.fv-image-loader {
+  position: absolute;
+  inset: 0;
+  z-index: var(--fv-z-loader);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fv-bg-loader-overlay);
+}
+
+.fv-image-img {
+  max-height: var(--fv-image-max-height);
+  max-width: 100%;
+  box-shadow: var(--fv-shadow-md);
+}
+
+.fv-transform-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.fv-transform-wrapper--panning {
+  cursor: move;
+}
+
+.fv-transform-content {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}

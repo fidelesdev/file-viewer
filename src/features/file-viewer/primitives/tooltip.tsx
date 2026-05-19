@@ -278,8 +278,7 @@ export function TooltipPortal({ children }: { children: ReactNode }) {
   return createPortal(children, document.body)
 }
 
-const TOOLTIP_CONTENT_BASE =
-  'pointer-events-none fixed z-[200] w-max max-w-xs transition-opacity duration-200'
+const TOOLTIP_CONTENT_BASE = 'fv-tooltip-shell'
 
 export function TooltipContent({
   children,
