@@ -1,5 +1,5 @@
-[![npm version](https://img.shields.io/npm/v/@fdls/file-viewer.svg)](https://www.npmjs.com/package/@fdls/file-viewer)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[npm version](https://www.npmjs.com/package/@fdls/file-viewer)
+[License: MIT](https://opensource.org/licenses/MIT)
 
 # @fdls/file-viewer
 
@@ -39,11 +39,15 @@ Your app must already use **React 18+**. The installer will automatically resolv
 ```sh
 npm install @fdls/file-viewer
 ```
+
 Or with Yarn:
+
 ```sh
 yarn add @fdls/file-viewer
 ```
+
 Or with pnpm:
+
 ```sh
 pnpm add @fdls/file-viewer
 ```
@@ -54,17 +58,20 @@ pnpm add @fdls/file-viewer
 
 The `FileViewer` component automatically chooses the correct internal viewer based on the `extension` prop.
 
-| Type | Supported Extensions | Description |
-| :--- | :--- | :--- |
-| **PDF** | `.pdf` | Multi-page document viewer with continuous scroll, pagination, and zoom. |
-| **Images** | `.jpg`, `.jpeg`, `.png` | Interactive image viewer with pan and zoom controls. |
-| **Others** | *Coming soon* | We plan to support more extensions in the future! For now, unsupported types display a fallback message (which you can override using the `renderUnsupported` prop). |
+
+| Type       | Supported Extensions    | Description                                                                                                                                                          |
+| ---------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PDF**    | `.pdf`                  | Multi-page document viewer with continuous scroll, pagination, and zoom.                                                                                             |
+| **Images** | `.jpg`, `.jpeg`, `.png` | Interactive image viewer with pan and zoom controls.                                                                                                                 |
+| **Others** | *Coming soon*           | We plan to support more extensions in the future! For now, unsupported types display a fallback message (which you can override using the `renderUnsupported` prop). |
+
 
 ---
 
 ## Quick Start
 
 ### 1. Configure the PDF Worker
+
 You **must** configure the PDF worker path in your application's entry point before any PDFs are rendered.
 
 ```tsx
@@ -76,6 +83,7 @@ configureFileViewerPdfWorker()
 ```
 
 ### 2. Use the FileViewer Component
+
 The styles are automatically loaded when you import from `@fdls/file-viewer`.
 
 ```tsx
@@ -103,14 +111,18 @@ export function DocumentPreview() {
 ## Usage Guide
 
 ### Inline vs Modal Layouts
+
 The `FileViewer` can be rendered in two modes:
 
-| `mode` | Behavior |
-| :--- | :--- |
-| **`inline`** (default) | Fills the parent container. The close button is hidden by default. A full-screen expand button is shown on the header. |
-| **`modal`** | Full-screen dialog overlay with focus-trap. Close via header button or Escape. |
+
+| `mode`                 | Behavior                                                                                                               |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `**inline**` (default) | Fills the parent container. The close button is hidden by default. A full-screen expand button is shown on the header. |
+| `**modal**`            | Full-screen dialog overlay with focus-trap. Close via header button or Escape.                                         |
+
 
 ### Global Defaults
+
 You can configure global behaviors (like language or UI tweaks) once at app startup:
 
 ```ts
@@ -126,6 +138,7 @@ setFileViewerDefaults({
 **Merge priority:** Instance props > Global Defaults > Built-in defaults.
 
 ### Styling (plain CSS)
+
 The library ships **plain CSS** as `dist/style.css` (no Tailwind in the published package). Importing any export from `@fdls/file-viewer` loads that stylesheet automatically (Vite, Webpack, Next.js with `transpilePackages`). It works alongside Tailwind v3/v4 or without Tailwind.
 
 Override visuals with `styles` (`CSSProperties`) or extra `classNames` on each component:
@@ -140,16 +153,42 @@ Override visuals with `styles` (`CSSProperties`) or extra `classNames` on each c
 ### Framework Guides (Vite & Next.js)
 
 #### Next.js (App Router)
+
+> **Turbopack (`next dev --turbo`)**  
+> PDF preview does **not** work with Turbopack on **Next.js 14.x and earlier**. `pdfjs-dist` relies on `/* webpackIgnore: true */` on a dynamic worker import, which Turbopack only respects reliably from **Next.js 15** onward ([vercel/next.js#65406](https://github.com/vercel/next.js/issues/65406)).  
+> On older Next versions you may see `Module not found` when compiling `pdfjs-dist/build/pdf.mjs`.  
+> **Workarounds:** run dev **without** `--turbo` (`next dev`), or **upgrade to Next.js 15+** if you need Turbopack in development.
+
 1. Add to `next.config.ts`:
+
 ```ts
 const nextConfig = {
   transpilePackages: ['@fdls/file-viewer'],
 }
 ```
-2. Create a Client Component provider (`providers.tsx`) and call `configureFileViewerPdfWorker()` inside it.
-3. Import and use `FileViewer` in your `'use client'` components.
+
+1. Create or modify your **Client Component provider** (e.g., `providers.tsx`). This is where you initialize client-side logic for your app:
+
+```tsx
+'use client'
+
+import { configureFileViewerPdfWorker } from '@fdls/file-viewer'
+import { useEffect } from 'react'
+
+export function AppProviders({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Initialize the PDF worker once when the app starts
+    configureFileViewerPdfWorker()
+  }, [])
+
+  return <>{children}</>
+}
+```
+
+2. Wrap your `layout.tsx` with this provider and import `FileViewer` in any `'use client'` page.
 
 #### Vite
+
 1. Call `configureFileViewerPdfWorker()` in `main.tsx`.
 2. Use `FileViewer` in your components.
 
@@ -158,36 +197,44 @@ const nextConfig = {
 ## API Reference
 
 ### FileViewer
+
 The main shell component containing the header toolbar and the appropriate viewer (PDF or Image).
 
-| Prop | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `open` | `boolean` | — | Controlled visibility state |
-| `onOpenChange` | `(open: boolean) => void` | — | Callback when close button is clicked or Escape is pressed |
-| `url` | `string` | — | File URL |
-| `name` | `string` | — | Display name in the header |
-| `extension` | `string` | — | File extension (drives the viewer choice) |
-| `mode` | `'inline' \| 'modal'` | `'inline'` | Layout mode |
-| `language` | `'english' \| 'portuguese'` | `'english'` | Language for UI strings |
-| `hideCloseButton` | `boolean` | `true` (inline) / `false` (modal) | Hide header close control |
-| `onDownload` | `() => void` | — | Custom download handler (default uses `url`) |
-| `pdfViewerProps` | `Object` | — | Props passed down to the PdfViewer |
+
+| Prop              | Type                      | Default                           | Description                                                |
+| ----------------- | ------------------------- | --------------------------------- | ---------------------------------------------------------- |
+| `open`            | `boolean`                 | —                                 | Controlled visibility state                                |
+| `onOpenChange`    | `(open: boolean) => void` | —                                 | Callback when close button is clicked or Escape is pressed |
+| `url`             | `string`                  | —                                 | File URL                                                   |
+| `name`            | `string`                  | —                                 | Display name in the header                                 |
+| `extension`       | `string`                  | —                                 | File extension (drives the viewer choice)                  |
+| `mode`            | `'inline'                 | 'modal'`                          | `'inline'`                                                 |
+| `language`        | `'english'                | 'portuguese'`                     | `'english'`                                                |
+| `hideCloseButton` | `boolean`                 | `true` (inline) / `false` (modal) | Hide header close control                                  |
+| `onDownload`      | `() => void`              | —                                 | Custom download handler (default uses `url`)               |
+| `pdfViewerProps`  | `Object`                  | —                                 | Props passed down to the PdfViewer                         |
+
 
 ### PdfViewer
+
 Standalone PDF viewer component with continuous scroll, pagination, and zoom.
 
-| Prop | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `url` | `string` | — | PDF URL |
-| `viewMode` | `'single' \| 'continuous'` | `'continuous'` | Page layout |
-| `preloadAhead` | `number` | `1` | Pages mounted outside viewport (continuous) |
-| `zoomDebounceDelay` | `number` | `500` | Canvas re-render debounce (ms) |
+
+| Prop                | Type      | Default       | Description                                 |
+| ------------------- | --------- | ------------- | ------------------------------------------- |
+| `url`               | `string`  | —             | PDF URL                                     |
+| `viewMode`          | `'single' | 'continuous'` | `'continuous'`                              |
+| `preloadAhead`      | `number`  | `1`           | Pages mounted outside viewport (continuous) |
+| `zoomDebounceDelay` | `number`  | `500`         | Canvas re-render debounce (ms)              |
+
 
 ### ImageViewer
+
 Standalone Image viewer with pan/zoom and auto-hide floating toolbar.
 Accepts `url`, `name`, `language`, and custom styles.
 
 ### setFileViewerDefaults
+
 Function to merge settings globally.
 `setFileViewerDefaults(partial)` / `getFileViewerDefaults()` / `resetFileViewerDefaults()`
 
@@ -205,4 +252,5 @@ npm run dev
 ```
 
 ## License
+
 [MIT](LICENSE) © file-viewer contributors
