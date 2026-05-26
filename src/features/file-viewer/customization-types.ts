@@ -2,6 +2,8 @@ import type { CSSProperties, ReactNode } from 'react'
 
 export type SlotStyle = CSSProperties
 
+export type ViewerExtraActionsSide = 'left' | 'right'
+
 export type FileViewerDialogClassNames = {
   /** Modal overlay layer (Dialog.Content). Ignored in inline mode. */
   content?: string
@@ -11,7 +13,7 @@ export type FileViewerDialogStyles = {
   content?: SlotStyle
 }
 
-export type FileViewerExtraHeaderActionsSide = 'left' | 'right'
+export type FileViewerExtraHeaderActionsSide = ViewerExtraActionsSide
 
 export type FileViewerClassNames = {
   header?: string
@@ -73,6 +75,35 @@ export type FileViewerCloseButtonRenderProps = FileViewerCloseButtonContext & {
   defaultCloseButton: ReactNode
 }
 
+export type PdfToolbarActionsContext = {
+  pageNumber: number
+  numPages: number
+  viewMode: 'single' | 'continuous'
+  isFirstPage: boolean
+  isLastPage: boolean
+  previousPage: () => void
+  nextPage: () => void
+  goToPage: (page: number) => void
+  zoomIn: () => void
+  zoomOut: () => void
+  zoomReset: () => void
+}
+
+export type PdfToolbarActionsRenderProps = PdfToolbarActionsContext & {
+  defaultActions: ReactNode
+}
+
+export type ImageToolbarActionsContext = {
+  scale: number
+  zoomIn: () => void
+  zoomOut: () => void
+  resetTransform: () => void
+}
+
+export type ImageToolbarActionsRenderProps = ImageToolbarActionsContext & {
+  defaultActions: ReactNode
+}
+
 export type PdfViewerClassNames = {
   root?: string
   scrollArea?: string
@@ -83,6 +114,8 @@ export type PdfViewerClassNames = {
   pageInner?: string
   pageInput?: string
   pagination?: string
+  toolbarBuiltins?: string
+  toolbarExtra?: string
 }
 
 export type PdfViewerStyles = {
@@ -95,6 +128,8 @@ export type PdfViewerStyles = {
   pageInner?: SlotStyle
   pageInput?: SlotStyle
   pagination?: SlotStyle
+  toolbarBuiltins?: SlotStyle
+  toolbarExtra?: SlotStyle
 }
 
 export type ImageViewerClassNames = {
@@ -102,6 +137,8 @@ export type ImageViewerClassNames = {
   loader?: string
   image?: string
   toolbar?: string
+  toolbarBuiltins?: string
+  toolbarExtra?: string
 }
 
 export type ImageViewerStyles = {
@@ -109,6 +146,8 @@ export type ImageViewerStyles = {
   loader?: SlotStyle
   image?: SlotStyle
   toolbar?: SlotStyle
+  toolbarBuiltins?: SlotStyle
+  toolbarExtra?: SlotStyle
 }
 
 export type ViewerToolbarClassNames = {

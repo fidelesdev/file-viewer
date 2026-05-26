@@ -2,6 +2,22 @@
 
 All notable changes to `@fdls/file-viewer` are documented in this file.
 
+## [0.4.1] — 2026-05-26
+
+### Added
+
+- **Floating toolbar — level 2:** `extraToolbarActions` and `extraToolbarActionsSide` (`left` | `right`) on `FileViewer`, `PdfViewer`, and `ImageViewer`.
+- **Floating toolbar — level 3:** `renderToolbarActions({ defaultActions, ...context })` on `FileViewer`, `PdfViewer`, and `ImageViewer`.
+- Wrapper slots `toolbarBuiltins` / `toolbarExtra` on PDF and image viewer `classNames` / `styles` (defaults: `.fv-toolbar-builtins`, `.fv-toolbar-extra`).
+- Exported types: `ViewerExtraActionsSide`, `PdfToolbarActionsContext`, `PdfToolbarActionsRenderProps`, `ImageToolbarActionsContext`, `ImageToolbarActionsRenderProps`.
+- Internal `composeExtraActionsArea` utility shared by header and floating toolbars.
+
+### Notes
+
+- Additive release; no breaking changes from 0.4.0.
+- PDF: `renderPagination={null}` still hides the entire floating toolbar; custom `renderPagination` replaces only pagination while zoom and extras remain.
+- When `renderToolbarActions` is set, `extraToolbarActions` is ignored (same precedence as header).
+
 ## [0.4.0] — 2026-05-26
 
 ### Breaking changes

@@ -13,6 +13,10 @@ import type {
   FileViewerHeaderActionsRenderProps,
   FileViewerCloseButtonRenderProps,
   FileViewerStyles,
+  ImageToolbarActionsContext,
+  ImageToolbarActionsRenderProps,
+  PdfToolbarActionsContext,
+  PdfToolbarActionsRenderProps,
   ViewerToolbarClassNames,
   ViewerToolbarStyles,
 } from './customization-types'
@@ -56,6 +60,14 @@ export interface FileViewerDefaults {
     renderCloseButton?: (
       props: FileViewerCloseButtonRenderProps,
     ) => ReactNode | null
+    extraToolbarActions?:
+      | ReactNode
+      | ((context: PdfToolbarActionsContext) => ReactNode)
+      | ((context: ImageToolbarActionsContext) => ReactNode)
+    extraToolbarActionsSide?: FileViewerExtraHeaderActionsSide
+    renderToolbarActions?:
+      | ((props: PdfToolbarActionsRenderProps) => ReactNode)
+      | ((props: ImageToolbarActionsRenderProps) => ReactNode)
     pdfViewerProps?: Omit<PdfViewerProps, 'url' | 'language'>
   }
 

@@ -1,5 +1,5 @@
-[npm version](https://www.npmjs.com/package/@fdls/file-viewer)
-[License: MIT](https://opensource.org/licenses/MIT)
+[![npm version](https://img.shields.io/npm/v/@fdls/file-viewer.svg)](https://www.npmjs.com/package/@fdls/file-viewer)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 # @fdls/file-viewer
 
@@ -20,7 +20,7 @@ This library provides a drop-in file viewing experience with a clean UI, robust 
   - [Global Defaults](#global-defaults)
   - [Styling (plain CSS)](#styling-plain-css)
   - [Header customization](#header-customization)
-  - [Upgrading to v0.4](#upgrading-to-v04)
+  - [Toolbar customization](#toolbar-customization)
   - [Framework Guides (Vite & Next.js)](#framework-guides-vite--nextjs)
 - [API Reference](#api-reference)
   - [FileViewer](#fileviewer)
@@ -215,17 +215,57 @@ When `renderHeaderActions` is set, `extraHeaderActions` is ignored. Built-in ful
 
 `FileViewerHeaderActionsContext` exposes `toggleFullscreen()` and `isFullscreen` for custom actions.
 
-### Upgrading to v0.4
+### Toolbar customization
 
-See [CHANGELOG.md](./CHANGELOG.md) for the full list. Quick reference:
+The floating toolbar on **PdfViewer** and **ImageViewer** follows the same three-level API as the header:
 
-| Removed / renamed (0.3.x) | Replacement (0.4) |
-| ------------------------- | ----------------- |
-| `classNames.root`, `styles.root` | `className`, `style` |
-| `dialogClassNames.panel`, `dialogClassNames.backdrop` | `className` (panel) / remove backdrop (unused) |
-| `showOpenInModalButton` | `showFullscreenButton` |
-| `onOpenInModal` | `onFullscreen` |
-| `classNames.openInModalButton` | `classNames.fullscreenButton` |
+| Level | Use case | API |
+| ----- | -------- | --- |
+| **1 — Config** | Style built-ins or extras | `classNames.toolbarBuiltins` / `toolbarExtra`, `styles`, global `toolbar.*` |
+| **2 — Extend** | Add actions without replacing built-ins | `extraToolbarActions`, `extraToolbarActionsSide` |
+| **3 — Compose** | Reorder or replace toolbar UI | `renderToolbarActions({ defaultActions, ...context })` |
+
+Pass props directly on `FileViewer` (or via `pdfViewerProps` / global defaults):
+
+```tsx
+<FileViewer
+  extraToolbarActions={({ zoomIn }) => (
+    <button type="button" onClick={zoomIn} aria-label="Custom zoom">
+      +
+    </button>
+  )}
+  extraToolbarActionsSide="left"
+  {...props}
+/>
+```
+
+**PDF — compose with defaults (custom pagination + built-in zoom):**
+
+```tsx
+<PdfViewer
+  renderToolbarActions={({ defaultActions, pageNumber, goToPage }) => (
+    <>
+      <MyPagePicker page={pageNumber} onChange={goToPage} />
+      {defaultActions}
+    </>
+  )}
+  url={pdfUrl}
+/>
+```
+
+**Image — full replacement:**
+
+```tsx
+<ImageViewer
+  renderToolbarActions={({ scale, zoomIn, zoomOut, resetTransform }) => (
+    <MyZoomBar scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetTransform} />
+  )}
+  url={imageUrl}
+  name="photo.jpg"
+/>
+```
+
+Precedence matches the header: when `renderToolbarActions` is set, `extraToolbarActions` is ignored. On PDF, `renderPagination={null}` still hides the entire floating toolbar; a custom `renderPagination` replaces only the pagination block while zoom and extras remain.
 
 ### Framework Guides (Vite & Next.js)
 
@@ -297,6 +337,9 @@ The main shell component containing the header toolbar and the appropriate viewe
 | `extraHeaderActionsSide` | `'left' \| 'right'` | `'right'`                  | Extra actions to the left or right of built-in controls    |
 | `renderHeaderActions`  | `(props) => ReactNode`    | —                                 | Compose or replace header actions (`defaultActions` in props) |
 | `renderCloseButton`    | `(props) => ReactNode`    | —                                 | Compose or replace close button (`defaultCloseButton` in props) |
+| `extraToolbarActions`  | `ReactNode \| fn`         | —                                 | Extra floating toolbar actions on PDF/image viewer           |
+| `extraToolbarActionsSide` | `'left' \| 'right'` | `'right'`                  | Extra toolbar actions left or right of built-ins             |
+| `renderToolbarActions` | `(props) => ReactNode`    | —                                 | Compose or replace floating toolbar (`defaultActions` in props) |
 | `onDownload`           | `() => void`              | —                                 | Custom download handler (default uses `url`)               |
 | `onFullscreen`         | `() => void`              | —                                 | Custom fullscreen handler (default opens internal modal)   |
 | `dialogClassNames`     | `{ content?: string }`    | —                                 | Modal overlay layer only                                   |
@@ -311,15 +354,27 @@ Standalone PDF viewer component with continuous scroll, pagination, and zoom.
 | Prop                | Type      | Default       | Description                                 |
 | ------------------- | --------- | ------------- | ------------------------------------------- |
 | `url`               | `string`  | —             | PDF URL                                     |
-| `viewMode`          | `'single' | 'continuous'` | `'continuous'`                              |
+| `viewMode`          | `'single' \| 'continuous'` | `'continuous'` | Single page or continuous scroll |
 | `preloadAhead`      | `number`  | `1`           | Pages mounted outside viewport (continuous) |
 | `zoomDebounceDelay` | `number`  | `500`         | Canvas re-render debounce (ms)              |
+| `renderPagination`  | `(props) => ReactNode \| null` | default UI | Custom pagination block; `null` hides entire toolbar |
+| `extraToolbarActions` | `ReactNode \| fn` | —         | Extra floating toolbar actions (`toolbarExtra`) |
+| `extraToolbarActionsSide` | `'left' \| 'right'` | `'right'` | Extra actions left or right of built-ins |
+| `renderToolbarActions` | `(props) => ReactNode` | —      | Compose or replace toolbar (`defaultActions` in props) |
 
 
 ### ImageViewer
 
-Standalone Image viewer with pan/zoom and auto-hide floating toolbar.
-Accepts `url`, `name`, `language`, and custom styles.
+Standalone image viewer with pan/zoom and auto-hide floating toolbar.
+
+| Prop                | Type      | Default       | Description                                 |
+| ------------------- | --------- | ------------- | ------------------------------------------- |
+| `url`               | `string`  | —             | Image URL                                   |
+| `name`              | `string`  | —             | Alt text / display name                     |
+| `language`          | `'english' \| 'portuguese'` | `'english'` | UI language |
+| `extraToolbarActions` | `ReactNode \| fn` | —         | Extra floating toolbar actions (`toolbarExtra`) |
+| `extraToolbarActionsSide` | `'left' \| 'right'` | `'right'` | Extra actions left or right of built-ins |
+| `renderToolbarActions` | `(props) => ReactNode` | —      | Compose or replace toolbar (`defaultActions` in props) |
 
 ### setFileViewerDefaults
 

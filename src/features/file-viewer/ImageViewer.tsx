@@ -7,7 +7,7 @@ import {
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch'
 import { ZoomIn, ZoomOut, Scan, LoaderCircle } from './components/icons'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import {
   ViewerFloatingToolbar,
   ViewerToolbarDivider,
@@ -17,6 +17,9 @@ import { getFileViewerDefaults, resolveImageViewerProps } from './config'
 import type {
   ImageViewerClassNames,
   ImageViewerStyles,
+  ImageToolbarActionsContext,
+  ImageToolbarActionsRenderProps,
+  ViewerExtraActionsSide,
 } from './customization-types'
 import { useAutoHide } from './hooks/useAutoHide'
 import {
@@ -28,8 +31,14 @@ import { clampPanToImageBounds } from './utils/image-viewport-clamp'
 import { getFileViewerTranslations, type ViewerLanguage } from './translations'
 import { mergeClassNames } from './utils/merge-slot-props'
 import { resolveOption } from './utils/resolve-options'
+import { composeExtraActionsArea } from './utils/compose-extra-actions-area'
 
-export type { ImageViewerClassNames, ImageViewerStyles } from './customization-types'
+export type {
+  ImageViewerClassNames,
+  ImageViewerStyles,
+  ImageToolbarActionsContext,
+  ImageToolbarActionsRenderProps,
+} from './customization-types'
 
 const IMAGE_ROOT_DEFAULT = 'fv-image-root'
 
@@ -38,6 +47,10 @@ const IMAGE_LOADER_OVERLAY_DEFAULT = 'fv-image-loader'
 const IMAGE_LOADER_ICON_DEFAULT = 'fv-icon fv-icon--xl fv-icon--spin fv-icon--white'
 
 const IMAGE_IMG_DEFAULT = 'fv-image-img'
+
+const IMAGE_TOOLBAR_BUILTINS_DEFAULT = 'fv-toolbar-builtins'
+
+const IMAGE_TOOLBAR_EXTRA_DEFAULT = 'fv-toolbar-extra'
 
 const SCALE_EPSILON = 0.012
 const FIT_AT_ONE_EPSILON = 0.018
@@ -50,6 +63,11 @@ export interface ImageViewerProps {
   language?: ViewerLanguage
   classNames?: ImageViewerClassNames
   styles?: ImageViewerStyles
+  extraToolbarActions?:
+    | ReactNode
+    | ((context: ImageToolbarActionsContext) => ReactNode)
+  extraToolbarActionsSide?: ViewerExtraActionsSide
+  renderToolbarActions?: (props: ImageToolbarActionsRenderProps) => ReactNode
 }
 
 export default function ImageViewer({
@@ -58,13 +76,26 @@ export default function ImageViewer({
   language: languageProp,
   classNames: classNamesProp,
   styles: stylesProp,
+  extraToolbarActions: extraToolbarActionsProp,
+  extraToolbarActionsSide: extraToolbarActionsSideProp,
+  renderToolbarActions: renderToolbarActionsProp,
 }: ImageViewerProps) {
   const resolved = resolveImageViewerProps({
     classNames: classNamesProp,
     styles: stylesProp,
+    extraToolbarActions: extraToolbarActionsProp,
+    extraToolbarActionsSide: extraToolbarActionsSideProp,
+    renderToolbarActions: renderToolbarActionsProp,
   })
   const classNames = resolved.classNames
   const styles = resolved.styles
+  const extraToolbarActions = resolved.extraToolbarActions
+  const extraToolbarActionsSide = resolveOption(
+    resolved.extraToolbarActionsSide,
+    undefined,
+    'right',
+  )
+  const renderToolbarActions = resolved.renderToolbarActions
 
   const language = resolveOption(
     languageProp,
@@ -298,28 +329,21 @@ export default function ImageViewer({
           onPanningStart={() => setIsPanning(true)}
           onPanningStop={() => setIsPanning(false)}
         >
-          {({ zoomIn, zoomOut, resetTransform }) => (
-            <>
-              <TransformComponent
-                wrapperClass={wrapperClassName}
-                contentClass="fv-transform-content"
-              >
-                <img
-                  src={url}
-                  alt={name}
-                  onLoad={handleImageLoad}
-                  onError={handleImageError}
-                  className={imageClassName('image', IMAGE_IMG_DEFAULT)}
-                  style={imageStyle('image')}
-                />
-              </TransformComponent>
+          {({ zoomIn, zoomOut, resetTransform }) => {
+            const handleResetTransform = () => {
+              resetTransform()
+              updateScaleText(1)
+            }
 
-              <ViewerFloatingToolbar
-                ref={toolbarRef}
-                className={imageClassName('toolbar', 'fv-floating-toolbar')}
-                style={imageStyle('toolbar')}
-                data-toolbar-visible={isToolbarVisible}
-              >
+            const buildToolbarActionsContext = (): ImageToolbarActionsContext => ({
+              scale: viewport.scale,
+              zoomIn,
+              zoomOut,
+              resetTransform: handleResetTransform,
+            })
+
+            const buildDefaultToolbarActions = (): ReactNode => (
+              <>
                 <span ref={scaleRef} className="fv-toolbar-scale-label">
                   100%
                 </span>
@@ -345,10 +369,7 @@ export default function ImageViewer({
                 >
                   <ViewerToolbarIconButton
                     disabled={fitDisabled}
-                    onClick={() => {
-                      resetTransform()
-                      updateScaleText(1)
-                    }}
+                    onClick={handleResetTransform}
                     aria-label={imageT.fitScreenAriaLabel}
                   >
                     <Scan className="fv-icon fv-icon--sm" />
@@ -367,9 +388,75 @@ export default function ImageViewer({
                     <ZoomIn className="fv-icon fv-icon--sm" />
                   </ViewerToolbarIconButton>
                 </FileViewerTooltip>
-              </ViewerFloatingToolbar>
-            </>
-          )}
+              </>
+            )
+
+            const renderExtraToolbarActions = (
+              context: ImageToolbarActionsContext,
+            ): ReactNode | null => {
+              if (!extraToolbarActions) {
+                return null
+              }
+
+              if (typeof extraToolbarActions === 'function') {
+                return extraToolbarActions(context)
+              }
+
+              return extraToolbarActions
+            }
+
+            const renderToolbarActionsArea = (): ReactNode => {
+              const context = buildToolbarActionsContext()
+              const defaultActions = buildDefaultToolbarActions()
+
+              if (renderToolbarActions) {
+                return renderToolbarActions({ ...context, defaultActions })
+              }
+
+              return composeExtraActionsArea({
+                side: extraToolbarActionsSide,
+                builtins: defaultActions,
+                extra: renderExtraToolbarActions(context),
+                builtinsClassName: imageClassName(
+                  'toolbarBuiltins',
+                  IMAGE_TOOLBAR_BUILTINS_DEFAULT,
+                ),
+                extraClassName: imageClassName(
+                  'toolbarExtra',
+                  IMAGE_TOOLBAR_EXTRA_DEFAULT,
+                ),
+                builtinsStyle: imageStyle('toolbarBuiltins'),
+                extraStyle: imageStyle('toolbarExtra'),
+              })
+            }
+
+            return (
+              <>
+                <TransformComponent
+                  wrapperClass={wrapperClassName}
+                  contentClass="fv-transform-content"
+                >
+                  <img
+                    src={url}
+                    alt={name}
+                    onLoad={handleImageLoad}
+                    onError={handleImageError}
+                    className={imageClassName('image', IMAGE_IMG_DEFAULT)}
+                    style={imageStyle('image')}
+                  />
+                </TransformComponent>
+
+                <ViewerFloatingToolbar
+                  ref={toolbarRef}
+                  className={imageClassName('toolbar', 'fv-floating-toolbar')}
+                  style={imageStyle('toolbar')}
+                  data-toolbar-visible={isToolbarVisible}
+                >
+                  {renderToolbarActionsArea()}
+                </ViewerFloatingToolbar>
+              </>
+            )
+          }}
         </TransformWrapper>
       </div>
     </FileViewerTooltipProvider>

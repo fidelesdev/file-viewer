@@ -1,6 +1,6 @@
 {
   "name": "@fdls/file-viewer",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": false,
   "description": "React components for in-app file preview: shell (FileViewer), PDF viewer, and image pan/zoom. No Radix UI or icon library peer dependencies.",
   "license": "MIT",

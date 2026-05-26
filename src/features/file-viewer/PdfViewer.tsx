@@ -34,7 +34,13 @@ import {
 } from './components/ViewerToolbar'
 import { useAutoHide } from './hooks/useAutoHide'
 import { getFileViewerDefaults, resolvePdfViewerProps } from './config'
-import type { PdfViewerClassNames, PdfViewerStyles } from './customization-types'
+import type {
+  PdfToolbarActionsContext,
+  PdfToolbarActionsRenderProps,
+  PdfViewerClassNames,
+  PdfViewerStyles,
+  ViewerExtraActionsSide,
+} from './customization-types'
 import {
   getFileViewerTranslations,
   resolveFormattedMessage,
@@ -42,8 +48,14 @@ import {
 } from './translations'
 import { resolveOption } from './utils/resolve-options'
 import { mergeClassNames } from './utils/merge-slot-props'
+import { composeExtraActionsArea } from './utils/compose-extra-actions-area'
 
-export type { PdfViewerClassNames, PdfViewerStyles } from './customization-types'
+export type {
+  PdfToolbarActionsContext,
+  PdfToolbarActionsRenderProps,
+  PdfViewerClassNames,
+  PdfViewerStyles,
+} from './customization-types'
 
 const PDF_VIEWER_ROOT_DEFAULT = 'fv-pdf-viewer'
 
@@ -74,6 +86,10 @@ const PDF_PAGE_INPUT_DEFAULT = 'fv-pagination-input'
 const PDF_PAGE_CANVAS_DEFAULT = 'fv-pdf-page-canvas'
 
 const PDF_PAGE_ZOOM_TRANSITION_CLASS = 'fv-pdf-page--zoom-transition'
+
+const PDF_TOOLBAR_BUILTINS_DEFAULT = 'fv-toolbar-builtins'
+
+const PDF_TOOLBAR_EXTRA_DEFAULT = 'fv-toolbar-extra'
 
 export type PdfViewMode = 'single' | 'continuous'
 
@@ -116,6 +132,12 @@ export interface PdfViewerProps {
   defaultPage?: number
   renderPagination?: ((props: PaginationRenderProps) => ReactNode) | null
 
+  extraToolbarActions?:
+    | ReactNode
+    | ((context: PdfToolbarActionsContext) => ReactNode)
+  extraToolbarActionsSide?: ViewerExtraActionsSide
+  renderToolbarActions?: (props: PdfToolbarActionsRenderProps) => ReactNode
+
   paginationClassName?: string
 
   language?: ViewerLanguage
@@ -143,6 +165,13 @@ export default function PdfViewer(props: PdfViewerProps) {
   const onPageChange = resolved.onPageChange
   const defaultPage = resolved.defaultPage ?? 1
   const renderPagination = resolved.renderPagination
+  const extraToolbarActions = resolved.extraToolbarActions
+  const extraToolbarActionsSide = resolveOption(
+    resolved.extraToolbarActionsSide,
+    undefined,
+    'right',
+  )
+  const renderToolbarActions = resolved.renderToolbarActions
   const paginationClassName = resolved.paginationClassName
   const className = resolved.className
   const pageClassName = resolved.pageClassName
@@ -922,29 +951,83 @@ export default function PdfViewer(props: PdfViewerProps) {
   const zoomInDisabled = instantZoom >= 3.99
   const fitDisabled = Math.abs(instantZoom - 1) < 0.01
 
-  // --- Render Pagination ---
-  const renderPaginationElement = () => {
-    if (renderPagination === null || numPages <= 0) return null
+  const paginationProps: PaginationRenderProps = {
+    pageNumber,
+    numPages,
+    previousPage,
+    nextPage,
+    goToPage,
+    isFirstPage: pageNumber <= 1,
+    isLastPage: pageNumber >= numPages,
+    viewMode,
+  }
 
-    const props: PaginationRenderProps = {
-      pageNumber,
-      numPages,
-      previousPage,
-      nextPage,
-      goToPage,
-      isFirstPage: pageNumber <= 1,
-      isLastPage: pageNumber >= numPages,
-      viewMode,
+  const buildToolbarActionsContext = (): PdfToolbarActionsContext => ({
+    pageNumber,
+    numPages,
+    viewMode,
+    isFirstPage: paginationProps.isFirstPage,
+    isLastPage: paginationProps.isLastPage,
+    previousPage,
+    nextPage,
+    goToPage,
+    zoomIn: handleZoomIn,
+    zoomOut: handleZoomOut,
+    zoomReset: handleZoomReset,
+  })
+
+  const buildZoomControls = (): ReactNode => (
+    <>
+      <FileViewerTooltip
+        content={pdfT.zoomOutTooltip}
+        disabled={zoomOutDisabled}
+      >
+        <ViewerToolbarIconButton
+          disabled={zoomOutDisabled}
+          onClick={handleZoomOut}
+          aria-label={pdfT.zoomOutAriaLabel}
+        >
+          <ZoomOut className="fv-icon fv-icon--sm" />
+        </ViewerToolbarIconButton>
+      </FileViewerTooltip>
+
+      <FileViewerTooltip
+        content={pdfT.fitWidthTooltip}
+        disabled={fitDisabled}
+      >
+        <ViewerToolbarIconButton
+          disabled={fitDisabled}
+          onClick={handleZoomReset}
+          aria-label={pdfT.fitWidthAriaLabel}
+        >
+          <Scan className="fv-icon fv-icon--sm" />
+        </ViewerToolbarIconButton>
+      </FileViewerTooltip>
+
+      <FileViewerTooltip
+        content={pdfT.zoomInTooltip}
+        disabled={zoomInDisabled}
+      >
+        <ViewerToolbarIconButton
+          disabled={zoomInDisabled}
+          onClick={handleZoomIn}
+          aria-label={pdfT.zoomInAriaLabel}
+        >
+          <ZoomIn className="fv-icon fv-icon--sm" />
+        </ViewerToolbarIconButton>
+      </FileViewerTooltip>
+    </>
+  )
+
+  const buildPaginationControls = (): ReactNode => {
+    if (numPages <= 1) {
+      return null
     }
 
     if (renderPagination) {
-      if (numPages <= 1) return null
-      return renderPagination(props)
+      return renderPagination(paginationProps)
     }
 
-    const showPageControls = numPages > 1
-
-    // Default pagination
     const paginationBody = (
       <>
         <div className="fv-pagination-input-wrap">
@@ -989,84 +1072,98 @@ export default function PdfViewer(props: PdfViewerProps) {
     )
 
     return (
+      <>
+        <FileViewerTooltip
+          content={pdfT.previousPageTooltip}
+          disabled={paginationProps.isFirstPage}
+        >
+          <ViewerToolbarIconButton
+            disabled={paginationProps.isFirstPage}
+            onClick={previousPage}
+            aria-label={pdfT.previousPageAriaLabel}
+          >
+            <ChevronLeft className="fv-icon fv-icon--sm" aria-hidden />
+          </ViewerToolbarIconButton>
+        </FileViewerTooltip>
+
+        {paginationBody}
+
+        <FileViewerTooltip
+          content={pdfT.nextPageTooltip}
+          disabled={paginationProps.isLastPage}
+        >
+          <ViewerToolbarIconButton
+            disabled={paginationProps.isLastPage}
+            onClick={nextPage}
+            aria-label={pdfT.nextPageAriaLabel}
+          >
+            <ChevronRight className="fv-icon fv-icon--sm" aria-hidden />
+          </ViewerToolbarIconButton>
+        </FileViewerTooltip>
+
+        <ViewerToolbarDivider />
+      </>
+    )
+  }
+
+  const buildDefaultToolbarActions = (): ReactNode => {
+    const paginationControls = buildPaginationControls()
+
+    return (
+      <>
+        {paginationControls}
+        {buildZoomControls()}
+      </>
+    )
+  }
+
+  const renderExtraToolbarActions = (
+    context: PdfToolbarActionsContext,
+  ): ReactNode | null => {
+    if (!extraToolbarActions) {
+      return null
+    }
+
+    if (typeof extraToolbarActions === 'function') {
+      return extraToolbarActions(context)
+    }
+
+    return extraToolbarActions
+  }
+
+  const renderToolbarActionsArea = (): ReactNode => {
+    const context = buildToolbarActionsContext()
+    const defaultActions = buildDefaultToolbarActions()
+
+    if (renderToolbarActions) {
+      return renderToolbarActions({ ...context, defaultActions })
+    }
+
+    return composeExtraActionsArea({
+      side: extraToolbarActionsSide,
+      builtins: defaultActions,
+      extra: renderExtraToolbarActions(context),
+      builtinsClassName: pdfClassName(
+        'toolbarBuiltins',
+        PDF_TOOLBAR_BUILTINS_DEFAULT,
+      ),
+      extraClassName: pdfClassName('toolbarExtra', PDF_TOOLBAR_EXTRA_DEFAULT),
+      builtinsStyle: pdfStyle('toolbarBuiltins'),
+      extraStyle: pdfStyle('toolbarExtra'),
+    })
+  }
+
+  const renderToolbarElement = () => {
+    if (renderPagination === null || numPages <= 0) return null
+
+    return (
       <ViewerFloatingToolbar
         ref={toolbarRef}
         className={pdfClassName('pagination', 'fv-floating-toolbar')}
         style={pdfStyle('pagination')}
         data-toolbar-visible={isToolbarVisible}
       >
-        {showPageControls ? (
-          <>
-            <FileViewerTooltip
-              content={pdfT.previousPageTooltip}
-              disabled={props.isFirstPage}
-            >
-              <ViewerToolbarIconButton
-                disabled={props.isFirstPage}
-                onClick={previousPage}
-                aria-label={pdfT.previousPageAriaLabel}
-              >
-                <ChevronLeft className="fv-icon fv-icon--sm" aria-hidden />
-              </ViewerToolbarIconButton>
-            </FileViewerTooltip>
-
-            {paginationBody}
-
-            <FileViewerTooltip
-              content={pdfT.nextPageTooltip}
-              disabled={props.isLastPage}
-            >
-              <ViewerToolbarIconButton
-                disabled={props.isLastPage}
-                onClick={nextPage}
-                aria-label={pdfT.nextPageAriaLabel}
-              >
-                <ChevronRight className="fv-icon fv-icon--sm" aria-hidden />
-              </ViewerToolbarIconButton>
-            </FileViewerTooltip>
-
-            <ViewerToolbarDivider />
-          </>
-        ) : null}
-
-        <FileViewerTooltip
-          content={pdfT.zoomOutTooltip}
-          disabled={zoomOutDisabled}
-        >
-          <ViewerToolbarIconButton
-            disabled={zoomOutDisabled}
-            onClick={handleZoomOut}
-            aria-label={pdfT.zoomOutAriaLabel}
-          >
-            <ZoomOut className="fv-icon fv-icon--sm" />
-          </ViewerToolbarIconButton>
-        </FileViewerTooltip>
-
-        <FileViewerTooltip
-          content={pdfT.fitWidthTooltip}
-          disabled={fitDisabled}
-        >
-          <ViewerToolbarIconButton
-            disabled={fitDisabled}
-            onClick={handleZoomReset}
-            aria-label={pdfT.fitWidthAriaLabel}
-          >
-            <Scan className="fv-icon fv-icon--sm" />
-          </ViewerToolbarIconButton>
-        </FileViewerTooltip>
-
-        <FileViewerTooltip
-          content={pdfT.zoomInTooltip}
-          disabled={zoomInDisabled}
-        >
-          <ViewerToolbarIconButton
-            disabled={zoomInDisabled}
-            onClick={handleZoomIn}
-            aria-label={pdfT.zoomInAriaLabel}
-          >
-            <ZoomIn className="fv-icon fv-icon--sm" />
-          </ViewerToolbarIconButton>
-        </FileViewerTooltip>
+        {renderToolbarActionsArea()}
       </ViewerFloatingToolbar>
     )
   }
@@ -1239,7 +1336,7 @@ export default function PdfViewer(props: PdfViewerProps) {
         <ScrollAreaCorner className="fv-scroll-corner" />
       </ScrollAreaRoot>
 
-      {renderPaginationElement()}
+      {renderToolbarElement()}
       </div>
     </FileViewerTooltipProvider>
   )

@@ -37,8 +37,14 @@ import type {
   FileViewerHeaderActionsContext,
   FileViewerHeaderActionsRenderProps,
   FileViewerStyles,
+  ImageToolbarActionsContext,
+  ImageToolbarActionsRenderProps,
+  PdfToolbarActionsContext,
+  PdfToolbarActionsRenderProps,
+  ViewerExtraActionsSide,
 } from './customization-types'
 import type { PdfViewerProps } from './PdfViewer'
+import type { ImageViewerProps } from './ImageViewer'
 import {
   getFileViewerTranslations,
   resolveFormattedMessage,
@@ -47,6 +53,7 @@ import {
 import { downloadFileFromUrl, printPdfFromUrl } from './utils/file-actions'
 import { resolveHideCloseButton, resolveOption } from './utils/resolve-options'
 import { mergeClassNames, mergeStyles } from './utils/merge-slot-props'
+import { composeExtraActionsArea } from './utils/compose-extra-actions-area'
 
 const LazyPdfViewer = lazy(() => import('./PdfViewer'))
 const LazyImageViewer = lazy(() => import('./ImageViewer'))
@@ -174,6 +181,24 @@ export interface FileViewerProps {
   renderCloseButton?: (
     props: FileViewerCloseButtonRenderProps,
   ) => ReactNode | null
+  /**
+   * Extra floating toolbar actions on the active viewer (PDF or image).
+   * Ignored when `renderToolbarActions` is set. Customize wrappers via
+   * viewer `classNames.toolbarBuiltins` / `toolbarExtra`.
+   */
+  extraToolbarActions?:
+    | ReactNode
+    | ((context: PdfToolbarActionsContext) => ReactNode)
+    | ((context: ImageToolbarActionsContext) => ReactNode)
+  /** Side of built-in controls for `extraToolbarActions`. Default `right`. */
+  extraToolbarActionsSide?: ViewerExtraActionsSide
+  /**
+   * Replaces default floating toolbar assembly on the active viewer.
+   * Use `defaultActions` to compose with built-in pagination/zoom controls.
+   */
+  renderToolbarActions?:
+    | ((props: PdfToolbarActionsRenderProps) => ReactNode)
+    | ((props: ImageToolbarActionsRenderProps) => ReactNode)
 }
 
 export function FileViewer({
@@ -203,6 +228,9 @@ export function FileViewer({
   extraHeaderActionsSide: extraHeaderActionsSideProp,
   renderHeaderActions: renderHeaderActionsProp,
   renderCloseButton: renderCloseButtonProp,
+  extraToolbarActions: extraToolbarActionsProp,
+  extraToolbarActionsSide: extraToolbarActionsSideProp,
+  renderToolbarActions: renderToolbarActionsProp,
 }: FileViewerProps) {
   const globalFileViewer = getFileViewerDefaults().fileViewer
   const mode = resolveOption(modeProp, globalFileViewer?.mode, 'inline')
@@ -260,9 +288,65 @@ export function FileViewer({
   const renderCloseButtonOverride =
     renderCloseButtonProp ?? globalFileViewer?.renderCloseButton
 
-  const mergedPdfViewerProps = resolvePdfViewerProps(pdfViewerProps)
+  const extraToolbarActions =
+    extraToolbarActionsProp ?? globalFileViewer?.extraToolbarActions
 
-  const mergedImageViewerProps = resolveImageViewerProps()
+  const extraToolbarActionsSide = resolveOption(
+    extraToolbarActionsSideProp,
+    globalFileViewer?.extraToolbarActionsSide,
+    'right',
+  )
+
+  const renderToolbarActions =
+    renderToolbarActionsProp ?? globalFileViewer?.renderToolbarActions
+
+  const fileViewerToolbarLayer: Partial<
+    Pick<
+      PdfViewerProps,
+      'extraToolbarActions' | 'extraToolbarActionsSide' | 'renderToolbarActions'
+    >
+  > = {}
+
+  if (extraToolbarActions !== undefined) {
+    fileViewerToolbarLayer.extraToolbarActions =
+      extraToolbarActions as PdfViewerProps['extraToolbarActions']
+  }
+
+  if (
+    extraToolbarActionsSideProp !== undefined ||
+    globalFileViewer?.extraToolbarActionsSide !== undefined
+  ) {
+    fileViewerToolbarLayer.extraToolbarActionsSide = extraToolbarActionsSide
+  }
+
+  if (renderToolbarActions !== undefined) {
+    fileViewerToolbarLayer.renderToolbarActions =
+      renderToolbarActions as PdfViewerProps['renderToolbarActions']
+  }
+
+  const mergedPdfViewerProps = resolvePdfViewerProps({
+    ...pdfViewerProps,
+    ...fileViewerToolbarLayer,
+  })
+
+  const mergedImageViewerProps = resolveImageViewerProps({
+    ...(extraToolbarActions !== undefined
+      ? {
+          extraToolbarActions:
+            extraToolbarActions as ImageViewerProps['extraToolbarActions'],
+        }
+      : {}),
+    ...(extraToolbarActionsSideProp !== undefined ||
+    globalFileViewer?.extraToolbarActionsSide !== undefined
+      ? { extraToolbarActionsSide }
+      : {}),
+    ...(renderToolbarActions !== undefined
+      ? {
+          renderToolbarActions:
+            renderToolbarActions as ImageViewerProps['renderToolbarActions'],
+        }
+      : {}),
+  })
 
   useEffect(() => {
     setIsMounted(true)
@@ -538,51 +622,22 @@ export function FileViewer({
       return renderHeaderActions({ ...context, defaultActions })
     }
 
-    const builtinsNode = (
-      <span
-        className={slotClassName(
-          'headerActionsBuiltins',
-          FILE_VIEWER_HEADER_ACTIONS_BUILTINS_DEFAULT,
-        )}
-        style={slotStyle('headerActionsBuiltins')}
-      >
-        {defaultActions}
-      </span>
-    )
-
     const extraNode = renderExtraHeaderActions(context)
-    if (!extraNode) {
-      return builtinsNode
-    }
-
-    const extraWrapper = (
-      <span
-        className={slotClassName(
-          'headerActionsExtra',
-          FILE_VIEWER_HEADER_ACTIONS_EXTRA_DEFAULT,
-        )}
-        style={slotStyle('headerActionsExtra')}
-        data-extra-side={extraHeaderActionsSide}
-      >
-        {extraNode}
-      </span>
-    )
-
-    if (extraHeaderActionsSide === 'left') {
-      return (
-        <>
-          {extraWrapper}
-          {builtinsNode}
-        </>
-      )
-    }
-
-    return (
-      <>
-        {builtinsNode}
-        {extraWrapper}
-      </>
-    )
+    return composeExtraActionsArea({
+      side: extraHeaderActionsSide,
+      builtins: defaultActions,
+      extra: extraNode,
+      builtinsClassName: slotClassName(
+        'headerActionsBuiltins',
+        FILE_VIEWER_HEADER_ACTIONS_BUILTINS_DEFAULT,
+      ),
+      extraClassName: slotClassName(
+        'headerActionsExtra',
+        FILE_VIEWER_HEADER_ACTIONS_EXTRA_DEFAULT,
+      ),
+      builtinsStyle: slotStyle('headerActionsBuiltins'),
+      extraStyle: slotStyle('headerActionsExtra'),
+    })
   }
 
   const buildDefaultCloseButton = (activeMode: 'inline' | 'modal'): ReactNode => {

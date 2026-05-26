@@ -33,8 +33,9 @@
 .fv-toolbar-divider {
   margin-left: 0.25rem;
   margin-right: 0.25rem;
-  height: 100%;
+  align-self: stretch;
   width: 1px;
+  flex-shrink: 0;
   background: var(--fv-color-text-muted-20);
 }
 
@@ -73,6 +74,19 @@
   line-height: 1.25rem;
   font-weight: 500;
   color: var(--fv-color-text-muted);
+}
+
+.fv-toolbar-builtins,
+.fv-toolbar-extra {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  align-self: stretch;
+}
+
+.fv-toolbar-builtins > :not(.fv-toolbar-divider),
+.fv-toolbar-extra > :not(.fv-toolbar-divider) {
+  align-self: center;
 }
 
 .fv-pagination-input-wrap {

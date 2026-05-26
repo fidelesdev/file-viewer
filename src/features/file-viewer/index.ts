@@ -18,12 +18,16 @@ export type {
   PdfViewerStyles,
   PdfViewMode,
   PaginationRenderProps,
+  PdfToolbarActionsContext,
+  PdfToolbarActionsRenderProps,
 } from './PdfViewer'
 export { default as ImageViewer } from './ImageViewer'
 export type {
   ImageViewerClassNames,
   ImageViewerProps,
   ImageViewerStyles,
+  ImageToolbarActionsContext,
+  ImageToolbarActionsRenderProps,
 } from './ImageViewer'
 export {
   FileViewerTooltip,
@@ -32,6 +36,7 @@ export {
 export type {
   FileViewerTooltipClassNames,
   FileViewerTooltipStyles,
+  ViewerExtraActionsSide,
 } from './customization-types'
 export type {
   ViewerToolbarClassNames,
