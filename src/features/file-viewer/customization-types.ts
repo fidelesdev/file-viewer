@@ -1,27 +1,27 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 export type SlotStyle = CSSProperties
 
 export type FileViewerDialogClassNames = {
-  backdrop?: string
+  /** Modal overlay layer (Dialog.Content). Ignored in inline mode. */
   content?: string
-  panel?: string
 }
 
 export type FileViewerDialogStyles = {
-  backdrop?: SlotStyle
   content?: SlotStyle
-  panel?: SlotStyle
 }
 
+export type FileViewerExtraHeaderActionsSide = 'left' | 'right'
+
 export type FileViewerClassNames = {
-  root?: string
   header?: string
   headerTitle?: string
   headerActions?: string
+  headerActionsBuiltins?: string
+  headerActionsExtra?: string
   closeButton?: string
   printButton?: string
-  openInModalButton?: string
+  fullscreenButton?: string
   downloadButton?: string
   viewer?: string
   loader?: string
@@ -29,17 +29,48 @@ export type FileViewerClassNames = {
 }
 
 export type FileViewerStyles = {
-  root?: SlotStyle
   header?: SlotStyle
   headerTitle?: SlotStyle
   headerActions?: SlotStyle
+  headerActionsBuiltins?: SlotStyle
+  headerActionsExtra?: SlotStyle
   closeButton?: SlotStyle
   printButton?: SlotStyle
-  openInModalButton?: SlotStyle
+  fullscreenButton?: SlotStyle
   downloadButton?: SlotStyle
   viewer?: SlotStyle
   loader?: SlotStyle
   unsupported?: SlotStyle
+}
+
+export type FileViewerHeaderActionsContext = {
+  mode: 'inline' | 'modal'
+  url?: string
+  name: string
+  extension: string
+  isLoading: boolean
+  isDownloading: boolean
+  /** `true` when inline preview is open in the full-screen modal. */
+  isFullscreen: boolean
+  print: () => void
+  download: () => Promise<void>
+  toggleFullscreen: () => void
+}
+
+export type FileViewerHeaderActionsRenderProps =
+  FileViewerHeaderActionsContext & {
+    /** Built-in fullscreen, print, and download actions (respecting toggles). */
+    defaultActions: ReactNode
+  }
+
+export type FileViewerCloseButtonContext = {
+  mode: 'inline' | 'modal'
+  close: () => void
+}
+
+export type FileViewerCloseButtonRenderProps = FileViewerCloseButtonContext & {
+  /** Default close button (Dialog.Close in modal, onClick in inline). */
+  defaultCloseButton: ReactNode
 }
 
 export type PdfViewerClassNames = {

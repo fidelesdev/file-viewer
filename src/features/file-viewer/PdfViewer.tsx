@@ -924,7 +924,7 @@ export default function PdfViewer(props: PdfViewerProps) {
 
   // --- Render Pagination ---
   const renderPaginationElement = () => {
-    if (renderPagination === null || numPages <= 1) return null
+    if (renderPagination === null || numPages <= 0) return null
 
     const props: PaginationRenderProps = {
       pageNumber,
@@ -938,8 +938,11 @@ export default function PdfViewer(props: PdfViewerProps) {
     }
 
     if (renderPagination) {
+      if (numPages <= 1) return null
       return renderPagination(props)
     }
+
+    const showPageControls = numPages > 1
 
     // Default pagination
     const paginationBody = (
@@ -952,25 +955,25 @@ export default function PdfViewer(props: PdfViewerProps) {
             onChange={(event) => setInputPage(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
-                const p = parseInt(inputPage, 10)
-                if (!isNaN(p)) goToPage(p)
+                const parsedPage = parseInt(inputPage, 10)
+                if (!Number.isNaN(parsedPage)) goToPage(parsedPage)
               } else if (event.key === 'ArrowUp') {
                 event.preventDefault()
-                const p = parseInt(inputPage, 10)
-                if (!isNaN(p)) {
-                  setInputPage(String(Math.min(p + 1, numPages)))
+                const parsedPage = parseInt(inputPage, 10)
+                if (!Number.isNaN(parsedPage)) {
+                  setInputPage(String(Math.min(parsedPage + 1, numPages)))
                 }
               } else if (event.key === 'ArrowDown') {
                 event.preventDefault()
-                const p = parseInt(inputPage, 10)
-                if (!isNaN(p)) {
-                  setInputPage(String(Math.max(p - 1, 1)))
+                const parsedPage = parseInt(inputPage, 10)
+                if (!Number.isNaN(parsedPage)) {
+                  setInputPage(String(Math.max(parsedPage - 1, 1)))
                 }
               }
             }}
             onBlur={() => {
-              const p = parseInt(inputPage, 10)
-              if (!isNaN(p)) goToPage(p)
+              const parsedPage = parseInt(inputPage, 10)
+              if (!Number.isNaN(parsedPage)) goToPage(parsedPage)
               else setInputPage(String(pageNumber))
             }}
             className={pdfClassName('pageInput', PDF_PAGE_INPUT_DEFAULT)}
@@ -992,35 +995,39 @@ export default function PdfViewer(props: PdfViewerProps) {
         style={pdfStyle('pagination')}
         data-toolbar-visible={isToolbarVisible}
       >
-        <FileViewerTooltip
-          content={pdfT.previousPageTooltip}
-          disabled={props.isFirstPage}
-        >
-          <ViewerToolbarIconButton
-            disabled={props.isFirstPage}
-            onClick={previousPage}
-            aria-label={pdfT.previousPageAriaLabel}
-          >
-            <ChevronLeft className="fv-icon fv-icon--sm" aria-hidden />
-          </ViewerToolbarIconButton>
-        </FileViewerTooltip>
+        {showPageControls ? (
+          <>
+            <FileViewerTooltip
+              content={pdfT.previousPageTooltip}
+              disabled={props.isFirstPage}
+            >
+              <ViewerToolbarIconButton
+                disabled={props.isFirstPage}
+                onClick={previousPage}
+                aria-label={pdfT.previousPageAriaLabel}
+              >
+                <ChevronLeft className="fv-icon fv-icon--sm" aria-hidden />
+              </ViewerToolbarIconButton>
+            </FileViewerTooltip>
 
-        {paginationBody}
+            {paginationBody}
 
-        <FileViewerTooltip
-          content={pdfT.nextPageTooltip}
-          disabled={props.isLastPage}
-        >
-          <ViewerToolbarIconButton
-            disabled={props.isLastPage}
-            onClick={nextPage}
-            aria-label={pdfT.nextPageAriaLabel}
-          >
-            <ChevronRight className="fv-icon fv-icon--sm" aria-hidden />
-          </ViewerToolbarIconButton>
-        </FileViewerTooltip>
+            <FileViewerTooltip
+              content={pdfT.nextPageTooltip}
+              disabled={props.isLastPage}
+            >
+              <ViewerToolbarIconButton
+                disabled={props.isLastPage}
+                onClick={nextPage}
+                aria-label={pdfT.nextPageAriaLabel}
+              >
+                <ChevronRight className="fv-icon fv-icon--sm" aria-hidden />
+              </ViewerToolbarIconButton>
+            </FileViewerTooltip>
 
-        <ViewerToolbarDivider />
+            <ViewerToolbarDivider />
+          </>
+        ) : null}
 
         <FileViewerTooltip
           content={pdfT.zoomOutTooltip}

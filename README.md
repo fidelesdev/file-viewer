@@ -18,7 +18,9 @@ This library provides a drop-in file viewing experience with a clean UI, robust 
 - [Usage Guide](#usage-guide)
   - [Inline vs Modal Layouts](#inline-vs-modal-layouts)
   - [Global Defaults](#global-defaults)
-  - [Styling (Tailwind & CSS)](#styling-tailwind--css)
+  - [Styling (plain CSS)](#styling-plain-css)
+  - [Header customization](#header-customization)
+  - [Upgrading to v0.4](#upgrading-to-v04)
   - [Framework Guides (Vite & Next.js)](#framework-guides-vite--nextjs)
 - [API Reference](#api-reference)
   - [FileViewer](#fileviewer)
@@ -141,14 +143,89 @@ setFileViewerDefaults({
 
 The library ships **plain CSS** as `dist/style.css` (no Tailwind in the published package). Importing any export from `@fdls/file-viewer` loads that stylesheet automatically (Vite, Webpack, Next.js with `transpilePackages`). It works alongside Tailwind v3/v4 or without Tailwind.
 
-Override visuals with `styles` (`CSSProperties`) or extra `classNames` on each component:
+Override visuals with `className` / `style` on the outer shell, or per-slot `classNames` / `styles`:
 
 ```tsx
 <FileViewer
+  className="my-viewer h-full rounded-lg"
+  style={{ maxHeight: '80vh' }}
   styles={{ header: { backgroundColor: '#1e40af' } }}
   classNames={{ header: 'my-app-viewer-header' }}
 />
 ```
+
+In **modal** mode, `dialogClassNames.content` styles the full-screen overlay layer (`Dialog.Content`); `className` styles the visible panel (`.fv-shell-root`).
+
+### Header customization
+
+The header API has three levels — use the shallowest one that fits:
+
+| Level | Use case | API |
+| ----- | -------- | --- |
+| **1 — Config** | Hide/show built-ins or tweak styles | `showFullscreenButton`, `showPrintButton`, `showDownloadButton`, `hideCloseButton`, `classNames` / `styles` |
+| **2 — Extend** | Add actions without replacing built-ins | `extraHeaderActions` |
+| **3 — Compose** | Reorder or replace header/close UI | `renderHeaderActions({ defaultActions, ... })`, `renderCloseButton({ defaultCloseButton, close, mode })` |
+
+**Level 2 — add a Share button (right of built-ins, default):**
+
+```tsx
+<FileViewer extraHeaderActions={<ShareButton />} {...props} />
+```
+
+**Level 2 — extras on the left:**
+
+```tsx
+<FileViewer
+  extraHeaderActions={<ShareButton />}
+  extraHeaderActionsSide="left"
+  {...props}
+/>
+```
+
+Or style the wrappers directly:
+
+```tsx
+<FileViewer
+  extraHeaderActions={<ShareButton />}
+  classNames={{
+    headerActionsExtra: 'order-first mr-auto',
+    headerActionsBuiltins: 'ml-auto',
+  }}
+/>
+```
+
+**Level 3 — compose with defaults:**
+
+```tsx
+<FileViewer
+  renderHeaderActions={({ defaultActions }) => (
+    <>
+      {defaultActions}
+      <ShareButton />
+    </>
+  )}
+  renderCloseButton={({ defaultCloseButton }) => (
+    <MyTooltip label="Close">{defaultCloseButton}</MyTooltip>
+  )}
+  {...props}
+/>
+```
+
+When `renderHeaderActions` is set, `extraHeaderActions` is ignored. Built-in fullscreen toggle: enter (`Maximize2`) in inline mode, exit (`Minimize2`) in the inline full-screen preview modal. Action order: fullscreen toggle → print → download.
+
+`FileViewerHeaderActionsContext` exposes `toggleFullscreen()` and `isFullscreen` for custom actions.
+
+### Upgrading to v0.4
+
+See [CHANGELOG.md](./CHANGELOG.md) for the full list. Quick reference:
+
+| Removed / renamed (0.3.x) | Replacement (0.4) |
+| ------------------------- | ----------------- |
+| `classNames.root`, `styles.root` | `className`, `style` |
+| `dialogClassNames.panel`, `dialogClassNames.backdrop` | `className` (panel) / remove backdrop (unused) |
+| `showOpenInModalButton` | `showFullscreenButton` |
+| `onOpenInModal` | `onFullscreen` |
+| `classNames.openInModalButton` | `classNames.fullscreenButton` |
 
 ### Framework Guides (Vite & Next.js)
 
@@ -201,18 +278,29 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 The main shell component containing the header toolbar and the appropriate viewer (PDF or Image).
 
 
-| Prop              | Type                      | Default                           | Description                                                |
-| ----------------- | ------------------------- | --------------------------------- | ---------------------------------------------------------- |
-| `open`            | `boolean`                 | —                                 | Controlled visibility state                                |
-| `onOpenChange`    | `(open: boolean) => void` | —                                 | Callback when close button is clicked or Escape is pressed |
-| `url`             | `string`                  | —                                 | File URL                                                   |
-| `name`            | `string`                  | —                                 | Display name in the header                                 |
-| `extension`       | `string`                  | —                                 | File extension (drives the viewer choice)                  |
-| `mode`            | `'inline'                 | 'modal'`                          | `'inline'`                                                 |
-| `language`        | `'english'                | 'portuguese'`                     | `'english'`                                                |
-| `hideCloseButton` | `boolean`                 | `true` (inline) / `false` (modal) | Hide header close control                                  |
-| `onDownload`      | `() => void`              | —                                 | Custom download handler (default uses `url`)               |
-| `pdfViewerProps`  | `Object`                  | —                                 | Props passed down to the PdfViewer                         |
+| Prop                   | Type                      | Default                           | Description                                                |
+| ---------------------- | ------------------------- | --------------------------------- | ---------------------------------------------------------- |
+| `open`                 | `boolean`                 | —                                 | Controlled visibility state                                |
+| `onOpenChange`         | `(open: boolean) => void` | —                                 | Callback when close button is clicked or Escape is pressed |
+| `url`                  | `string`                  | —                                 | File URL                                                   |
+| `name`                 | `string`                  | —                                 | Display name in the header                                 |
+| `extension`            | `string`                  | —                                 | File extension (drives the viewer choice)                  |
+| `mode`                 | `'inline' \| 'modal'`     | `'inline'`                        | Inline container or full-screen dialog                     |
+| `language`             | `'english' \| 'portuguese'` | `'english'`                     | UI language                                                |
+| `className`            | `string`                  | —                                 | Classes on the outer shell (`.fv-shell-root`)              |
+| `style`                | `CSSProperties`           | —                                 | Inline styles on the outer shell                           |
+| `hideCloseButton`      | `boolean`                 | `true` (inline) / `false` (modal) | Hide header close control                                  |
+| `showFullscreenButton` | `boolean`                 | `true` (inline only)              | Full-screen expand control in inline mode                  |
+| `showPrintButton`      | `boolean`                 | `true`                            | Show print action                                          |
+| `showDownloadButton`   | `boolean`                 | `true`                            | Show download action                                       |
+| `extraHeaderActions`   | `ReactNode \| fn`         | —                                 | Extra toolbar actions (wrappers: `headerActionsExtra`)     |
+| `extraHeaderActionsSide` | `'left' \| 'right'` | `'right'`                  | Extra actions to the left or right of built-in controls    |
+| `renderHeaderActions`  | `(props) => ReactNode`    | —                                 | Compose or replace header actions (`defaultActions` in props) |
+| `renderCloseButton`    | `(props) => ReactNode`    | —                                 | Compose or replace close button (`defaultCloseButton` in props) |
+| `onDownload`           | `() => void`              | —                                 | Custom download handler (default uses `url`)               |
+| `onFullscreen`         | `() => void`              | —                                 | Custom fullscreen handler (default opens internal modal)   |
+| `dialogClassNames`     | `{ content?: string }`    | —                                 | Modal overlay layer only                                   |
+| `pdfViewerProps`       | `Object`                  | —                                 | Props passed down to the PdfViewer                         |
 
 
 ### PdfViewer

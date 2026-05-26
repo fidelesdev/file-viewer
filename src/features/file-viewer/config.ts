@@ -8,10 +8,15 @@ import type {
   FileViewerClassNames,
   FileViewerDialogClassNames,
   FileViewerDialogStyles,
+  FileViewerExtraHeaderActionsSide,
+  FileViewerHeaderActionsContext,
+  FileViewerHeaderActionsRenderProps,
+  FileViewerCloseButtonRenderProps,
   FileViewerStyles,
   ViewerToolbarClassNames,
   ViewerToolbarStyles,
 } from './customization-types'
+import type { CSSProperties, ReactNode } from 'react'
 import type { ImageViewerProps } from './ImageViewer'
 import type { PdfViewerProps } from './PdfViewer'
 import type {
@@ -31,11 +36,26 @@ export interface FileViewerDefaults {
   fileViewer?: {
     mode?: 'modal' | 'inline'
     hideCloseButton?: boolean
-    showOpenInModalButton?: boolean
+    showFullscreenButton?: boolean
+    showPrintButton?: boolean
+    showDownloadButton?: boolean
+    className?: string
+    style?: CSSProperties
     dialogClassNames?: FileViewerDialogClassNames
     dialogStyles?: FileViewerDialogStyles
     classNames?: FileViewerClassNames
     styles?: FileViewerStyles
+    extraHeaderActions?:
+      | ReactNode
+      | ((context: FileViewerHeaderActionsContext) => ReactNode)
+    /** Side of built-in controls for `extraHeaderActions`. Default `right`. */
+    extraHeaderActionsSide?: FileViewerExtraHeaderActionsSide
+    renderHeaderActions?: (
+      props: FileViewerHeaderActionsRenderProps,
+    ) => ReactNode
+    renderCloseButton?: (
+      props: FileViewerCloseButtonRenderProps,
+    ) => ReactNode | null
     pdfViewerProps?: Omit<PdfViewerProps, 'url' | 'language'>
   }
 

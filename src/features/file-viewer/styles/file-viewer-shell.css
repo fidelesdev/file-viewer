@@ -1,9 +1,16 @@
 .fv-shell-root {
+  pointer-events: auto;
   display: flex;
+  height: 100%;
+  width: 100%;
   min-height: 0;
   flex: 1;
   flex-direction: column;
   overflow: hidden;
+  border-radius: 0;
+  border: 0;
+  background: var(--fv-bg-panel);
+  box-shadow: none;
 }
 
 .fv-shell-header {
@@ -37,6 +44,14 @@
 
 .fv-shell-header-actions {
   display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fv-shell-header-actions-builtins,
+.fv-shell-header-actions-extra {
+  display: flex;
+  align-items: center;
   gap: 0.75rem;
 }
 

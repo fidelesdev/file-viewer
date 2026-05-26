@@ -5,10 +5,19 @@ import {
   Download,
   LoaderCircle,
   Maximize2,
+  Minimize2,
   Printer,
   X,
 } from './components/icons'
-import { ReactNode, Suspense, useEffect, useRef, useState, lazy } from 'react'
+import {
+  type CSSProperties,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  lazy,
+} from 'react'
 import { useReactToPrint } from 'react-to-print'
 import {
   FileViewerTooltip,
@@ -21,8 +30,12 @@ import {
 } from './config'
 import type {
   FileViewerClassNames,
+  FileViewerCloseButtonRenderProps,
   FileViewerDialogClassNames,
   FileViewerDialogStyles,
+  FileViewerExtraHeaderActionsSide,
+  FileViewerHeaderActionsContext,
+  FileViewerHeaderActionsRenderProps,
   FileViewerStyles,
 } from './customization-types'
 import type { PdfViewerProps } from './PdfViewer'
@@ -40,14 +53,17 @@ const LazyImageViewer = lazy(() => import('./ImageViewer'))
 
 export type {
   FileViewerClassNames,
+  FileViewerCloseButtonContext,
+  FileViewerCloseButtonRenderProps,
   FileViewerDialogClassNames,
   FileViewerDialogStyles,
+  FileViewerExtraHeaderActionsSide,
+  FileViewerHeaderActionsContext,
+  FileViewerHeaderActionsRenderProps,
   FileViewerStyles,
 } from './customization-types'
 
 const FILE_VIEWER_DIALOG_CONTENT_DEFAULT = 'fv-dialog-content'
-
-const FILE_VIEWER_DIALOG_PANEL_DEFAULT = 'fv-dialog-panel'
 
 const FILE_VIEWER_ROOT_DEFAULT = 'fv-shell-root'
 
@@ -64,6 +80,11 @@ const FILE_VIEWER_TITLE_INLINE_DEFAULT =
 
 const FILE_VIEWER_HEADER_ACTIONS_DEFAULT = 'fv-shell-header-actions'
 
+const FILE_VIEWER_HEADER_ACTIONS_BUILTINS_DEFAULT =
+  'fv-shell-header-actions-builtins'
+
+const FILE_VIEWER_HEADER_ACTIONS_EXTRA_DEFAULT = 'fv-shell-header-actions-extra'
+
 const FILE_VIEWER_ACTION_BUTTON_DEFAULT = 'fv-shell-action-button'
 
 const FILE_VIEWER_ACTION_BUTTON_DOWNLOAD_DEFAULT = 'fv-shell-action-button'
@@ -71,6 +92,10 @@ const FILE_VIEWER_ACTION_BUTTON_DOWNLOAD_DEFAULT = 'fv-shell-action-button'
 const FILE_VIEWER_VIEWER_DEFAULT = 'fv-shell-viewer'
 
 const FILE_VIEWER_LOADER_DEFAULT = 'fv-icon fv-icon--xl fv-icon--spin'
+
+type FileViewerPanelOptions = {
+  isInlineFullscreenModal?: boolean
+}
 
 function mergeFileViewerSlotClassName(
   builtIn: string,
@@ -107,14 +132,48 @@ export interface FileViewerProps {
    * In `inline` mode, shows a control to open the same file in a full-screen modal.
    * Defaults to `true`. Set to `false` to hide the button.
    */
-  showOpenInModalButton?: boolean
+  showFullscreenButton?: boolean
   /** When set, called instead of the built-in modal preview. */
-  onOpenInModal?: () => void
+  onFullscreen?: () => void
+  /** Show the print action in the header. Defaults to `true`. */
+  showPrintButton?: boolean
+  /** Show the download action in the header. Defaults to `true`. */
+  showDownloadButton?: boolean
+  /** Extra classes/styles on the outer shell container. */
+  className?: string
+  style?: CSSProperties
   classNames?: FileViewerClassNames
   styles?: FileViewerStyles
-  /** Extra classes per layer; appended to package defaults (use `!` utilities to override when needed). */
+  /** Modal overlay layer classes (Dialog.Content). Ignored in inline mode. */
   dialogClassNames?: FileViewerDialogClassNames
   dialogStyles?: FileViewerDialogStyles
+  /**
+   * Extra header actions relative to built-in controls.
+   * Ignored when `renderHeaderActions` is set.
+   */
+  extraHeaderActions?:
+    | ReactNode
+    | ((context: FileViewerHeaderActionsContext) => ReactNode)
+  /**
+   * Where to render `extraHeaderActions` — to the `left` or `right` of
+   * built-in actions. Default `right`. Customize wrappers via
+   * `classNames.headerActionsBuiltins` / `headerActionsExtra`.
+   */
+  extraHeaderActionsSide?: FileViewerExtraHeaderActionsSide
+  /**
+   * Replaces default header action assembly. Use `defaultActions` to compose
+   * with or without built-in fullscreen, print, and download controls.
+   */
+  renderHeaderActions?: (
+    props: FileViewerHeaderActionsRenderProps,
+  ) => ReactNode
+  /**
+   * Replaces default close button assembly. Use `defaultCloseButton` to wrap
+   * or return `null` to hide.
+   */
+  renderCloseButton?: (
+    props: FileViewerCloseButtonRenderProps,
+  ) => ReactNode | null
 }
 
 export function FileViewer({
@@ -130,12 +189,20 @@ export function FileViewer({
   renderUnsupported,
   language: languageProp,
   hideCloseButton: hideCloseButtonProp,
-  showOpenInModalButton: showOpenInModalButtonProp,
-  onOpenInModal,
+  showFullscreenButton: showFullscreenButtonProp,
+  onFullscreen,
+  showPrintButton: showPrintButtonProp,
+  showDownloadButton: showDownloadButtonProp,
+  className: classNameProp,
+  style: styleProp,
   classNames,
   styles,
   dialogClassNames,
   dialogStyles,
+  extraHeaderActions: extraHeaderActionsProp,
+  extraHeaderActionsSide: extraHeaderActionsSideProp,
+  renderHeaderActions: renderHeaderActionsProp,
+  renderCloseButton: renderCloseButtonProp,
 }: FileViewerProps) {
   const globalFileViewer = getFileViewerDefaults().fileViewer
   const mode = resolveOption(modeProp, globalFileViewer?.mode, 'inline')
@@ -158,13 +225,40 @@ export function FileViewer({
   const [isDownloading, setIsDownloading] = useState(false)
   const [isModalPreviewOpen, setIsModalPreviewOpen] = useState(false)
 
-  const showOpenInModalButton =
+  const showFullscreenButton =
     mode === 'inline' &&
     resolveOption(
-      showOpenInModalButtonProp,
-      globalFileViewer?.showOpenInModalButton,
+      showFullscreenButtonProp,
+      globalFileViewer?.showFullscreenButton,
       true,
     )
+
+  const showPrintButton = resolveOption(
+    showPrintButtonProp,
+    globalFileViewer?.showPrintButton,
+    true,
+  )
+
+  const showDownloadButton = resolveOption(
+    showDownloadButtonProp,
+    globalFileViewer?.showDownloadButton,
+    true,
+  )
+
+  const renderHeaderActions =
+    renderHeaderActionsProp ?? globalFileViewer?.renderHeaderActions
+
+  const extraHeaderActions =
+    extraHeaderActionsProp ?? globalFileViewer?.extraHeaderActions
+
+  const extraHeaderActionsSide = resolveOption(
+    extraHeaderActionsSideProp,
+    globalFileViewer?.extraHeaderActionsSide,
+    'right',
+  )
+
+  const renderCloseButtonOverride =
+    renderCloseButtonProp ?? globalFileViewer?.renderCloseButton
 
   const mergedPdfViewerProps = resolvePdfViewerProps(pdfViewerProps)
 
@@ -197,24 +291,23 @@ export function FileViewer({
   const slotStyle = (key: keyof FileViewerStyles) =>
     mergeStyles(globalFileViewer?.styles?.[key], styles?.[key])
 
+  const shellClassName = mergeClassNames(
+    FILE_VIEWER_ROOT_DEFAULT,
+    globalFileViewer?.className,
+    classNameProp,
+  )
+
+  const shellStyle = mergeStyles(globalFileViewer?.style, styleProp)
+
   const contentClasses = mergeFileViewerSlotClassName(
     FILE_VIEWER_DIALOG_CONTENT_DEFAULT,
     globalFileViewer?.dialogClassNames?.content,
     dialogClassNames?.content,
   )
-  const panelClasses = mergeFileViewerSlotClassName(
-    FILE_VIEWER_DIALOG_PANEL_DEFAULT,
-    globalFileViewer?.dialogClassNames?.panel,
-    dialogClassNames?.panel,
-  )
 
   const contentStyle = mergeStyles(
     globalFileViewer?.dialogStyles?.content,
     dialogStyles?.content,
-  )
-  const panelStyle = mergeStyles(
-    globalFileViewer?.dialogStyles?.panel,
-    dialogStyles?.panel,
   )
 
   const renderPdf = () => {
@@ -285,32 +378,224 @@ export function FileViewer({
     }
   }
 
-  const handleOpenInModal = () => {
-    if (onOpenInModal) {
-      onOpenInModal()
+  const handleToggleFullscreen = () => {
+    if (onFullscreen) {
+      onFullscreen()
       return
     }
-    setIsModalPreviewOpen(true)
+    setIsModalPreviewOpen((previousOpen) => !previousOpen)
   }
 
-  const renderCloseButton = (activeMode: 'inline' | 'modal') => {
-    const hideClose = resolveHideCloseButton(
-      hideCloseButtonProp,
-      globalFileViewer?.hideCloseButton,
-      activeMode,
-    )
+  const buildHeaderActionsContext = (
+    activeMode: 'inline' | 'modal',
+    panelOptions: FileViewerPanelOptions = {},
+  ): FileViewerHeaderActionsContext => ({
+    mode: activeMode,
+    url,
+    name,
+    extension,
+    isLoading: Boolean(isLoading),
+    isDownloading,
+    isFullscreen: Boolean(panelOptions.isInlineFullscreenModal),
+    print: handlePrint,
+    download: handleDownload,
+    toggleFullscreen: handleToggleFullscreen,
+  })
 
-    if (hideClose) {
+  const buildDefaultHeaderActions = (
+    activeMode: 'inline' | 'modal',
+    panelOptions: FileViewerPanelOptions = {},
+  ): ReactNode => {
+    const actions: ReactNode[] = []
+    const isInlineFullscreenModal = Boolean(panelOptions.isInlineFullscreenModal)
+
+    if (showFullscreenButton && activeMode === 'inline') {
+      actions.push(
+        <FileViewerTooltip key="fullscreen-enter" content={t.fileViewer.fullscreenTooltip}>
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            className={slotClassName(
+              'fullscreenButton',
+              FILE_VIEWER_ACTION_BUTTON_DEFAULT,
+            )}
+            style={slotStyle('fullscreenButton')}
+            aria-label={t.fileViewer.fullscreenAriaLabel}
+          >
+            <Maximize2 className="fv-icon fv-icon--md" aria-hidden />
+          </button>
+        </FileViewerTooltip>,
+      )
+    }
+
+    if (showFullscreenButton && isInlineFullscreenModal) {
+      actions.push(
+        <FileViewerTooltip
+          key="fullscreen-exit"
+          content={t.fileViewer.fullscreenExitTooltip}
+        >
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            className={slotClassName(
+              'fullscreenButton',
+              FILE_VIEWER_ACTION_BUTTON_DEFAULT,
+            )}
+            style={slotStyle('fullscreenButton')}
+            aria-label={t.fileViewer.fullscreenExitAriaLabel}
+          >
+            <Minimize2 className="fv-icon fv-icon--md" aria-hidden />
+          </button>
+        </FileViewerTooltip>,
+      )
+    }
+
+    if (showPrintButton) {
+      actions.push(
+        <FileViewerTooltip key="print" content={t.fileViewer.printTooltip}>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className={slotClassName(
+              'printButton',
+              FILE_VIEWER_ACTION_BUTTON_DEFAULT,
+            )}
+            style={slotStyle('printButton')}
+            aria-label={t.fileViewer.printAriaLabel}
+          >
+            <Printer className="fv-icon fv-icon--md" aria-hidden />
+          </button>
+        </FileViewerTooltip>,
+      )
+    }
+
+    if (showDownloadButton) {
+      actions.push(
+        <FileViewerTooltip
+          key="download"
+          content={
+            isDownloading
+              ? t.fileViewer.downloadInProgressTooltip
+              : t.fileViewer.downloadTooltip
+          }
+        >
+          <button
+            type="button"
+            disabled={isDownloading}
+            onClick={() => {
+              void handleDownload()
+            }}
+            className={slotClassName(
+              'downloadButton',
+              FILE_VIEWER_ACTION_BUTTON_DOWNLOAD_DEFAULT,
+            )}
+            style={slotStyle('downloadButton')}
+            aria-busy={isDownloading}
+            aria-label={
+              isDownloading
+                ? t.fileViewer.downloadInProgressAriaLabel
+                : t.fileViewer.downloadAriaLabel
+            }
+          >
+            {isDownloading ? (
+              <LoaderCircle
+                className="fv-icon fv-icon--md fv-icon--spin"
+                aria-hidden
+              />
+            ) : (
+              <Download className="fv-icon fv-icon--md" aria-hidden />
+            )}
+          </button>
+        </FileViewerTooltip>,
+      )
+    }
+
+    return actions
+  }
+
+  const renderExtraHeaderActions = (
+    context: FileViewerHeaderActionsContext,
+  ): ReactNode => {
+    if (!extraHeaderActions) {
       return null
     }
 
+    if (typeof extraHeaderActions === 'function') {
+      return extraHeaderActions(context)
+    }
+
+    return extraHeaderActions
+  }
+
+  const renderHeaderActionsArea = (
+    activeMode: 'inline' | 'modal',
+    panelOptions: FileViewerPanelOptions = {},
+  ): ReactNode => {
+    const context = buildHeaderActionsContext(activeMode, panelOptions)
+    const defaultActions = buildDefaultHeaderActions(activeMode, panelOptions)
+
+    if (renderHeaderActions) {
+      return renderHeaderActions({ ...context, defaultActions })
+    }
+
+    const builtinsNode = (
+      <span
+        className={slotClassName(
+          'headerActionsBuiltins',
+          FILE_VIEWER_HEADER_ACTIONS_BUILTINS_DEFAULT,
+        )}
+        style={slotStyle('headerActionsBuiltins')}
+      >
+        {defaultActions}
+      </span>
+    )
+
+    const extraNode = renderExtraHeaderActions(context)
+    if (!extraNode) {
+      return builtinsNode
+    }
+
+    const extraWrapper = (
+      <span
+        className={slotClassName(
+          'headerActionsExtra',
+          FILE_VIEWER_HEADER_ACTIONS_EXTRA_DEFAULT,
+        )}
+        style={slotStyle('headerActionsExtra')}
+        data-extra-side={extraHeaderActionsSide}
+      >
+        {extraNode}
+      </span>
+    )
+
+    if (extraHeaderActionsSide === 'left') {
+      return (
+        <>
+          {extraWrapper}
+          {builtinsNode}
+        </>
+      )
+    }
+
+    return (
+      <>
+        {builtinsNode}
+        {extraWrapper}
+      </>
+    )
+  }
+
+  const buildDefaultCloseButton = (activeMode: 'inline' | 'modal'): ReactNode => {
     if (activeMode === 'modal') {
       return (
         <Dialog.Close asChild>
           <button
             type="button"
             aria-label={t.fileViewer.closeAriaLabel}
-            className={slotClassName('closeButton', FILE_VIEWER_CLOSE_BUTTON_DEFAULT)}
+            className={slotClassName(
+              'closeButton',
+              FILE_VIEWER_CLOSE_BUTTON_DEFAULT,
+            )}
             style={slotStyle('closeButton')}
           >
             <X className="fv-icon fv-icon--lg" aria-hidden />
@@ -332,150 +617,135 @@ export function FileViewer({
     )
   }
 
-  const renderPanelContent = (activeMode: 'inline' | 'modal') => {
-    const closeButton = renderCloseButton(activeMode)
+  const renderCloseButtonArea = (activeMode: 'inline' | 'modal'): ReactNode | null => {
+    const hideClose = resolveHideCloseButton(
+      hideCloseButtonProp,
+      globalFileViewer?.hideCloseButton,
+      activeMode,
+    )
+
+    const close = () => {
+      if (activeMode === 'modal') {
+        if (mode === 'inline') {
+          setIsModalPreviewOpen(false)
+        } else {
+          onOpenChange(false)
+        }
+        return
+      }
+      onOpenChange(false)
+    }
+
+    const defaultCloseButton = hideClose ? null : buildDefaultCloseButton(activeMode)
+
+    if (renderCloseButtonOverride) {
+      return renderCloseButtonOverride({
+        mode: activeMode,
+        close,
+        defaultCloseButton,
+      })
+    }
+
+    return defaultCloseButton
+  }
+
+  const renderPanelContent = (
+    activeMode: 'inline' | 'modal',
+    panelOptions: FileViewerPanelOptions = {},
+  ) => {
+    const closeButton = renderCloseButtonArea(activeMode)
 
     return (
-    <div
-      className={slotClassName('root', FILE_VIEWER_ROOT_DEFAULT)}
-      style={slotStyle('root')}
-    >
-      <div
-        className={slotClassName('header', FILE_VIEWER_HEADER_DEFAULT)}
-        style={slotStyle('header')}
-      >
-        <span className={FILE_VIEWER_HEADER_TITLE_WRAP_DEFAULT}>
-          {closeButton}
-          {activeMode === 'modal' ? (
-            <Dialog.Title asChild>
+      <>
+        <div
+          className={slotClassName('header', FILE_VIEWER_HEADER_DEFAULT)}
+          style={slotStyle('header')}
+        >
+          <span className={FILE_VIEWER_HEADER_TITLE_WRAP_DEFAULT}>
+            {closeButton}
+            {activeMode === 'modal' ? (
+              <Dialog.Title asChild>
+                <p
+                  className={slotClassName(
+                    'headerTitle',
+                    FILE_VIEWER_TITLE_MODAL_DEFAULT,
+                  )}
+                  style={slotStyle('headerTitle')}
+                >
+                  {name}
+                </p>
+              </Dialog.Title>
+            ) : (
               <p
                 className={slotClassName(
                   'headerTitle',
-                  FILE_VIEWER_TITLE_MODAL_DEFAULT,
+                  FILE_VIEWER_TITLE_INLINE_DEFAULT,
                 )}
                 style={slotStyle('headerTitle')}
               >
                 {name}
               </p>
-            </Dialog.Title>
-          ) : (
-            <p
-              className={slotClassName(
-                'headerTitle',
-                FILE_VIEWER_TITLE_INLINE_DEFAULT,
-              )}
-              style={slotStyle('headerTitle')}
-            >
-              {name}
-            </p>
-          )}
-        </span>
-
-        {url && !isLoading && supportedForPreview ? (
-          <span
-            className={slotClassName(
-              'headerActions',
-              FILE_VIEWER_HEADER_ACTIONS_DEFAULT,
             )}
-            style={slotStyle('headerActions')}
-          >
-              {showOpenInModalButton && activeMode === 'inline' ? (
-                <FileViewerTooltip content={t.fileViewer.openInModalTooltip}>
-                  <button
-                    type="button"
-                    onClick={handleOpenInModal}
-                    className={slotClassName(
-                      'openInModalButton',
-                      FILE_VIEWER_ACTION_BUTTON_DEFAULT,
-                    )}
-                    style={slotStyle('openInModalButton')}
-                    aria-label={t.fileViewer.openInModalAriaLabel}
-                  >
-                    <Maximize2 className="fv-icon fv-icon--md" aria-hidden />
-                  </button>
-                </FileViewerTooltip>
-              ) : null}
-            <FileViewerTooltip content={t.fileViewer.printTooltip}>
-              <button
-                type="button"
-                onClick={handlePrint}
-                className={slotClassName(
-                  'printButton',
-                  FILE_VIEWER_ACTION_BUTTON_DEFAULT,
-                )}
-                style={slotStyle('printButton')}
-                aria-label={t.fileViewer.printAriaLabel}
-              >
-                <Printer className="fv-icon fv-icon--md" aria-hidden />
-              </button>
-            </FileViewerTooltip>
-            <FileViewerTooltip
-              content={
-                isDownloading
-                  ? t.fileViewer.downloadInProgressTooltip
-                  : t.fileViewer.downloadTooltip
-              }
-            >
-              <button
-                type="button"
-                disabled={isDownloading}
-                onClick={() => {
-                  void handleDownload()
-                }}
-                className={slotClassName(
-                  'downloadButton',
-                  FILE_VIEWER_ACTION_BUTTON_DOWNLOAD_DEFAULT,
-                )}
-                style={slotStyle('downloadButton')}
-                aria-busy={isDownloading}
-                aria-label={
-                  isDownloading
-                    ? t.fileViewer.downloadInProgressAriaLabel
-                    : t.fileViewer.downloadAriaLabel
-                }
-              >
-                {isDownloading ? (
-                  <LoaderCircle
-                    className="fv-icon fv-icon--md fv-icon--spin"
-                    aria-hidden
-                  />
-                ) : (
-                  <Download className="fv-icon fv-icon--md" aria-hidden />
-                )}
-              </button>
-            </FileViewerTooltip>
           </span>
-        ) : null}
-      </div>
-      <div
-        className={slotClassName('viewer', FILE_VIEWER_VIEWER_DEFAULT)}
-        style={slotStyle('viewer')}
-      >
-        {!url || isLoading ? (
-          <LoaderCircle
-            className={slotClassName('loader', FILE_VIEWER_LOADER_DEFAULT)}
-            style={slotStyle('loader')}
-          />
-        ) : isImage ? (
-          renderImage()
-        ) : isPdf ? (
-          renderPdf()
-        ) : (
-          renderUnsupported || (
-            <p
-              className={slotClassName('unsupported', '')}
-              style={slotStyle('unsupported')}
+
+          {url && !isLoading && supportedForPreview ? (
+            <span
+              className={slotClassName(
+                'headerActions',
+                FILE_VIEWER_HEADER_ACTIONS_DEFAULT,
+              )}
+              style={slotStyle('headerActions')}
             >
-              {resolveFormattedMessage(t.fileViewer.unsupportedFileType, {
-                extension,
-              })}
-            </p>
-          )
-        )}
-      </div>
-    </div>
+              {renderHeaderActionsArea(activeMode, panelOptions)}
+            </span>
+          ) : null}
+        </div>
+        <div
+          className={slotClassName('viewer', FILE_VIEWER_VIEWER_DEFAULT)}
+          style={slotStyle('viewer')}
+        >
+          {!url || isLoading ? (
+            <LoaderCircle
+              className={slotClassName('loader', FILE_VIEWER_LOADER_DEFAULT)}
+              style={slotStyle('loader')}
+            />
+          ) : isImage ? (
+            renderImage()
+          ) : isPdf ? (
+            renderPdf()
+          ) : (
+            renderUnsupported || (
+              <p
+                className={slotClassName('unsupported', '')}
+                style={slotStyle('unsupported')}
+              >
+                {resolveFormattedMessage(t.fileViewer.unsupportedFileType, {
+                  extension,
+                })}
+              </p>
+            )
+          )}
+        </div>
+      </>
     )
   }
+
+  const renderShell = (
+    activeMode: 'inline' | 'modal',
+    options: { stopPropagation?: boolean; isInlineFullscreenModal?: boolean } = {},
+  ) => (
+    <div
+      className={shellClassName}
+      style={shellStyle}
+      onClick={
+        options.stopPropagation ? (event) => event.stopPropagation() : undefined
+      }
+    >
+      {renderPanelContent(activeMode, {
+        isInlineFullscreenModal: options.isInlineFullscreenModal,
+      })}
+    </div>
+  )
 
   const renderModalShell = (
     modalOpen: boolean,
@@ -489,13 +759,7 @@ export function FileViewer({
           className={contentClasses}
           style={contentStyle}
         >
-          <div
-            className={panelClasses}
-            style={panelStyle}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {content}
-          </div>
+          {content}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -514,14 +778,15 @@ export function FileViewer({
     if (!open) return null
     return (
       <FileViewerTooltipProvider>
-        <div className={panelClasses} style={panelStyle}>
-          {renderPanelContent('inline')}
-        </div>
+        {renderShell('inline')}
         {isModalPreviewOpen
           ? renderModalShell(
               isModalPreviewOpen,
               setIsModalPreviewOpen,
-              renderPanelContent('modal'),
+              renderShell('modal', {
+                stopPropagation: true,
+                isInlineFullscreenModal: true,
+              }),
             )
           : null}
         {printOnlyNode}
@@ -531,7 +796,7 @@ export function FileViewer({
 
   return (
     <FileViewerTooltipProvider>
-      {renderModalShell(open, onOpenChange, renderPanelContent('modal'))}
+      {renderModalShell(open, onOpenChange, renderShell('modal', { stopPropagation: true }))}
       {printOnlyNode}
     </FileViewerTooltipProvider>
   )

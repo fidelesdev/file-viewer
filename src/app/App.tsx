@@ -1,4 +1,4 @@
-import { FileImage, FileText, FileQuestion } from '@/features/file-viewer/components/icons'
+import { FileImage, FileText, FileQuestion, Download } from '@/features/file-viewer/components/icons'
 import { useState } from 'react'
 
 import { FileViewer } from '@/features/file-viewer'

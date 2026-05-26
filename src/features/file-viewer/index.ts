@@ -1,8 +1,13 @@
 export { FileViewer } from './FileViewer'
 export type {
   FileViewerClassNames,
+  FileViewerCloseButtonContext,
+  FileViewerCloseButtonRenderProps,
   FileViewerDialogClassNames,
   FileViewerDialogStyles,
+  FileViewerExtraHeaderActionsSide,
+  FileViewerHeaderActionsContext,
+  FileViewerHeaderActionsRenderProps,
   FileViewerProps,
   FileViewerStyles,
 } from './FileViewer'

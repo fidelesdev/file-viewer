@@ -19,8 +19,10 @@ export interface FileViewerShellTranslations {
   downloadTooltip: string
   downloadInProgressAriaLabel: string
   downloadInProgressTooltip: string
-  openInModalAriaLabel: string
-  openInModalTooltip: string
+  fullscreenAriaLabel: string
+  fullscreenTooltip: string
+  fullscreenExitAriaLabel: string
+  fullscreenExitTooltip: string
   unsupportedFileType: FormattableMessage<UnsupportedFileTypeParams>
 }
 
@@ -73,8 +75,10 @@ export const fileViewerTranslationsByLanguage: Record<
       downloadTooltip: 'Download',
       downloadInProgressAriaLabel: 'Downloading…',
       downloadInProgressTooltip: 'Downloading…',
-      openInModalAriaLabel: 'Open in full screen',
-      openInModalTooltip: 'Open in full screen',
+      fullscreenAriaLabel: 'Open in full screen',
+      fullscreenTooltip: 'Open in full screen',
+      fullscreenExitAriaLabel: 'Exit full screen',
+      fullscreenExitTooltip: 'Exit full screen',
       unsupportedFileType: ({ extension }) =>
         `No preview is available for file type "${extension}".`,
     },
@@ -110,8 +114,10 @@ export const fileViewerTranslationsByLanguage: Record<
       downloadTooltip: 'Transferir',
       downloadInProgressAriaLabel: 'A transferir…',
       downloadInProgressTooltip: 'A transferir…',
-      openInModalAriaLabel: 'Visualizar em tela cheia',
-      openInModalTooltip: 'Visualizar em tela cheia',
+      fullscreenAriaLabel: 'Visualizar em tela cheia',
+      fullscreenTooltip: 'Visualizar em tela cheia',
+      fullscreenExitAriaLabel: 'Sair da tela cheia',
+      fullscreenExitTooltip: 'Sair da tela cheia',
       unsupportedFileType: ({ extension }) =>
         `Ainda não existem visualizações para arquivos do tipo "${extension}".`,
     },

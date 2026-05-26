@@ -22,20 +22,6 @@
   outline: none;
 }
 
-.fv-dialog-panel {
-  pointer-events: auto;
-  display: flex;
-  height: 100%;
-  width: 100%;
-  min-height: 0;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 0;
-  border: 0;
-  background: var(--fv-bg-panel);
-  box-shadow: none;
-}
-
 /* Tooltip (positioning shell) */
 .fv-tooltip-shell {
   pointer-events: none;
