@@ -17,7 +17,7 @@ configureFileViewerPdfWorker({
 })
 
 setFileViewerDefaults({
-  language: 'portuguese',
+  language: 'english',
 })
 
 createRoot(document.getElementById('root')!).render(
