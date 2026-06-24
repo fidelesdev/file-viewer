@@ -19,6 +19,15 @@ import type {
   PdfToolbarActionsRenderProps,
   ViewerToolbarClassNames,
   ViewerToolbarStyles,
+  MultiFileViewerClassNames,
+  MultiFileViewerDialogClassNames,
+  MultiFileViewerDialogStyles,
+  MultiFileViewerLayout,
+  MultiFileViewerStackPosition,
+  MultiFileViewerStyles,
+  FileListHeaderContext,
+  FileListItemRenderProps,
+  FileListRenderProps,
 } from './customization-types'
 import type { CSSProperties, ReactNode } from 'react'
 import type { ImageViewerProps } from './ImageViewer'
@@ -32,6 +41,7 @@ import { deepMergePartial } from './utils/deep-partial'
 import {
   mergeSlotClassNames,
   mergeSlotStyles,
+  mergeStyles,
 } from './utils/merge-slot-props'
 
 export interface FileViewerDefaults {
@@ -92,9 +102,44 @@ export interface FileViewerDefaults {
   }
 
   translations?: DeepPartial<Record<ViewerLanguage, FileViewerTranslations>>
+
+  multiFileViewer?: {
+    layout?: MultiFileViewerLayout
+    stackPosition?: MultiFileViewerStackPosition
+    hideFileListWhenSingle?: boolean
+    fileListCollapsible?: boolean
+    className?: string
+    style?: CSSProperties
+    classNames?: MultiFileViewerClassNames
+    styles?: MultiFileViewerStyles
+    dialogClassNames?: MultiFileViewerDialogClassNames
+    dialogStyles?: MultiFileViewerDialogStyles
+    extraFileListHeader?:
+      | ReactNode
+      | ((context: FileListHeaderContext) => ReactNode)
+    renderFileListItem?: (props: FileListItemRenderProps) => ReactNode
+    renderFileList?: (props: FileListRenderProps) => ReactNode
+  }
 }
 
 let globalDefaults: FileViewerDefaults = {}
+
+function mergeMultiFileViewerDefaults(
+  current: FileViewerDefaults['multiFileViewer'],
+  partial: NonNullable<FileViewerDefaults['multiFileViewer']>,
+): FileViewerDefaults['multiFileViewer'] {
+  return {
+    ...current,
+    ...partial,
+    dialogClassNames: mergeSlotClassNames(
+      current?.dialogClassNames,
+      partial.dialogClassNames,
+    ),
+    dialogStyles: mergeSlotStyles(current?.dialogStyles, partial.dialogStyles),
+    classNames: mergeSlotClassNames(current?.classNames, partial.classNames),
+    styles: mergeSlotStyles(current?.styles, partial.styles),
+  }
+}
 
 function mergePdfViewerLayer(
   current: Omit<PdfViewerProps, 'url' | 'language'> | undefined,
@@ -247,6 +292,13 @@ export function setFileViewerDefaults(partial: DeepPartial<FileViewerDefaults>):
     )
   }
 
+  if (partial.multiFileViewer) {
+    next.multiFileViewer = mergeMultiFileViewerDefaults(
+      next.multiFileViewer,
+      partial.multiFileViewer as NonNullable<FileViewerDefaults['multiFileViewer']>,
+    )
+  }
+
   globalDefaults = next
 }
 
@@ -299,6 +351,71 @@ export function resolveImageViewerProps(
   const merged = mergeImageViewerDefaults(defaults.imageViewer, instance) ?? {}
 
   return merged
+}
+
+export type ResolvedMultiFileViewerOptions = {
+  layout: MultiFileViewerLayout
+  stackPosition: MultiFileViewerStackPosition
+  hideFileListWhenSingle: boolean
+  fileListCollapsible: boolean
+  className?: string
+  style?: CSSProperties
+  classNames: Partial<MultiFileViewerClassNames>
+  styles: Partial<MultiFileViewerStyles>
+  dialogClassNames: Partial<MultiFileViewerDialogClassNames>
+  dialogStyles: Partial<MultiFileViewerDialogStyles>
+  extraFileListHeader?:
+    | ReactNode
+    | ((context: FileListHeaderContext) => ReactNode)
+  renderFileListItem?: (props: FileListItemRenderProps) => ReactNode
+  renderFileList?: (props: FileListRenderProps) => ReactNode
+}
+
+export function resolveMultiFileViewerProps(
+  instance: {
+    layout?: MultiFileViewerLayout
+    stackPosition?: MultiFileViewerStackPosition
+    hideFileListWhenSingle?: boolean
+    fileListCollapsible?: boolean
+    className?: string
+    style?: CSSProperties
+    classNames?: MultiFileViewerClassNames
+    styles?: MultiFileViewerStyles
+    dialogClassNames?: MultiFileViewerDialogClassNames
+    dialogStyles?: MultiFileViewerDialogStyles
+    extraFileListHeader?:
+      | ReactNode
+      | ((context: FileListHeaderContext) => ReactNode)
+    renderFileListItem?: (props: FileListItemRenderProps) => ReactNode
+    renderFileList?: (props: FileListRenderProps) => ReactNode
+  } = {},
+): ResolvedMultiFileViewerOptions {
+  const defaults = getFileViewerDefaults().multiFileViewer
+  const merged = mergeMultiFileViewerDefaults(defaults, instance) ?? {}
+
+  const layout = merged.layout ?? instance.layout ?? 'sidebar'
+
+  return {
+    layout,
+    stackPosition: merged.stackPosition ?? 'top',
+    hideFileListWhenSingle: merged.hideFileListWhenSingle ?? true,
+    fileListCollapsible:
+      merged.fileListCollapsible ??
+      instance.fileListCollapsible ??
+      layout === 'sidebar',
+    className: merged.className ?? instance.className,
+    style: mergeStyles(defaults?.style, instance.style),
+    classNames: mergeSlotClassNames(defaults?.classNames, instance.classNames),
+    styles: mergeSlotStyles(defaults?.styles, instance.styles),
+    dialogClassNames: mergeSlotClassNames(
+      defaults?.dialogClassNames,
+      instance.dialogClassNames,
+    ),
+    dialogStyles: mergeSlotStyles(defaults?.dialogStyles, instance.dialogStyles),
+    extraFileListHeader: instance.extraFileListHeader ?? merged.extraFileListHeader,
+    renderFileListItem: instance.renderFileListItem ?? merged.renderFileListItem,
+    renderFileList: instance.renderFileList ?? merged.renderFileList,
+  }
 }
 
 export type { DeepPartial }

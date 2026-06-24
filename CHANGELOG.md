@@ -2,6 +2,27 @@
 
 All notable changes to `@fdls/file-viewer` are documented in this file.
 
+## [0.5.0] — 2026-06-23
+
+### Added
+
+- **`MultiFileViewer`** — preview multiple files with a selectable list and a single active preview via internal `FileViewer`.
+- Layouts: `sidebar` (collapsible list) and `stack` (horizontal chip strip) with `stackPosition` (`top` | `bottom`).
+- File list collapse: `fileListCollapsible`, `fileListCollapsed`, `onFileListCollapsedChange`.
+- Modes: `inline` and `modal` (outer dialog; inner preview stays inline).
+- Controlled / uncontrolled `activeIndex`, `onActiveIndexChange`, `hideFileListWhenSingle`.
+- **File list customization — level 1:** `classNames` / `styles` slots (`fileList`, `fileListItem`, `preview`, …) and CSS variables `--fv-multi-file-list-width`, `--fv-multi-file-list-max-height`, `--fv-multi-file-list-strip-height`.
+- **Level 2:** `extraFileListHeader` with `FileListHeaderContext`.
+- **Level 3:** `renderFileListItem`, `renderFileList`.
+- Global defaults: `setFileViewerDefaults({ multiFileViewer: { ... } })`, `resolveMultiFileViewerProps`.
+- i18n strings for file list (English + Portuguese).
+- Exported types: `ViewerFileItem`, `MultiFileViewerProps`, `MultiFileViewerClassNames`, `MultiFileViewerStyles`, `FileListItemRenderProps`, `FileListRenderProps`, `ResolvedMultiFileViewerOptions`.
+
+### Notes
+
+- Additive release; `FileViewer` API unchanged.
+- Closes [issue #1](https://github.com/fidelesdev/file-viewer/issues/1) (file listing lateral + stack).
+
 ## [0.4.1] — 2026-05-26
 
 ### Added

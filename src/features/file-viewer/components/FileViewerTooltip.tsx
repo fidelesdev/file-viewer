@@ -12,6 +12,7 @@ import {
   TooltipContent,
   useCloseActiveTooltip,
 } from '../primitives/tooltip'
+import type { TooltipSide } from '../primitives/compute-tooltip-placement'
 import { renderAsChild } from '../primitives/as-child'
 import { mergeClassNames, mergeStyles } from '../utils/merge-slot-props'
 
@@ -48,12 +49,18 @@ export function FileViewerTooltip({
   content,
   children,
   disabled = false,
+  side = 'top',
+  sideOffset = 6,
+  openOnHover = false,
   classNames,
   styles,
 }: {
   content: string
   children: ReactElement
   disabled?: boolean
+  side?: TooltipSide
+  sideOffset?: number
+  openOnHover?: boolean
   classNames?: FileViewerTooltipClassNames
   styles?: FileViewerTooltipStyles
 }) {
@@ -65,11 +72,13 @@ export function FileViewerTooltip({
 
   return (
     <TooltipRoot>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipTrigger asChild openOnHover={openOnHover}>
+        {children}
+      </TooltipTrigger>
       <TooltipPortal>
         <TooltipContent
-          side="top"
-          sideOffset={6}
+          side={side}
+          sideOffset={sideOffset}
           className={mergeClassNames(
             FILE_VIEWER_TOOLTIP_CONTENT_DEFAULT,
             tooltipDefaults?.classNames?.content,

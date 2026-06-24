@@ -13,6 +13,10 @@ import { FileViewerToolbarLevel3Page } from './pages/file-viewer/FileViewerToolb
 import { FileViewerStylingPage } from './pages/file-viewer/FileViewerStylingPage'
 import { FileViewerCallbacksPage } from './pages/file-viewer/FileViewerCallbacksPage'
 import { FileViewerI18nPage } from './pages/file-viewer/FileViewerI18nPage'
+import { MultiFileViewerOverviewPage } from './pages/file-viewer/MultiFileViewerOverviewPage'
+import { MultiFileViewerLevel1Page } from './pages/file-viewer/MultiFileViewerLevel1Page'
+import { MultiFileViewerLevel2Page } from './pages/file-viewer/MultiFileViewerLevel2Page'
+import { MultiFileViewerLevel3Page } from './pages/file-viewer/MultiFileViewerLevel3Page'
 import { PdfViewerOverviewPage } from './pages/pdf-viewer/PdfViewerOverviewPage'
 import { PdfViewerViewModesPage } from './pages/pdf-viewer/PdfViewerViewModesPage'
 import { PdfViewerPaginationPage } from './pages/pdf-viewer/PdfViewerPaginationPage'
@@ -68,6 +72,19 @@ export function DocsRoutes() {
         <Route path="file-viewer/styling" element={<FileViewerStylingPage />} />
         <Route path="file-viewer/callbacks" element={<FileViewerCallbacksPage />} />
         <Route path="file-viewer/i18n" element={<FileViewerI18nPage />} />
+        <Route path="file-viewer/multi" element={<MultiFileViewerOverviewPage />} />
+        <Route
+          path="file-viewer/multi/level-1"
+          element={<MultiFileViewerLevel1Page />}
+        />
+        <Route
+          path="file-viewer/multi/level-2"
+          element={<MultiFileViewerLevel2Page />}
+        />
+        <Route
+          path="file-viewer/multi/level-3"
+          element={<MultiFileViewerLevel3Page />}
+        />
 
         <Route path="pdf-viewer" element={<PdfViewerOverviewPage />} />
         <Route path="pdf-viewer/view-modes" element={<PdfViewerViewModesPage />} />

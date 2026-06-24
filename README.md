@@ -21,9 +21,11 @@ This library provides a drop-in file viewing experience with a clean UI, robust 
   - [Styling (plain CSS)](#styling-plain-css)
   - [Header customization](#header-customization)
   - [Toolbar customization](#toolbar-customization)
+  - [MultiFileViewer](#multifileviewer-1)
   - [Framework Guides (Vite & Next.js)](#framework-guides-vite--nextjs)
 - [API Reference](#api-reference)
   - [FileViewer](#fileviewer)
+  - [MultiFileViewer](#multifileviewer)
   - [PdfViewer](#pdfviewer)
   - [ImageViewer](#imageviewer)
   - [setFileViewerDefaults](#setfileviewerdefaults)
@@ -267,6 +269,31 @@ Pass props directly on `FileViewer` (or via `pdfViewerProps` / global defaults):
 
 Precedence matches the header: when `renderToolbarActions` is set, `extraToolbarActions` is ignored. On PDF, `renderPagination={null}` still hides the entire floating toolbar; a custom `renderPagination` replaces only the pagination block while zoom and extras remain.
 
+### MultiFileViewer
+
+Preview **multiple files** with a selectable list and one active preview (wraps `FileViewer` internally). See [issue #1](https://github.com/fidelesdev/file-viewer/issues/1).
+
+```tsx
+import { MultiFileViewer } from '@fdls/file-viewer'
+
+<MultiFileViewer
+  open={open}
+  onOpenChange={setOpen}
+  files={[
+    { name: 'report.pdf', extension: 'pdf', url: '/files/report.pdf' },
+    { name: 'photo.jpg', extension: 'jpg', url: '/files/photo.jpg' },
+  ]}
+  layout="sidebar"
+  defaultActiveIndex={0}
+/>
+```
+
+**Layouts:** `sidebar` (vertical list, collapsible by default) or `stack` (horizontal chip strip). Use `stackPosition` (`top` | `bottom`) for stack layout. Customize orientation or dimensions via `classNames` / `styles` on list slots.
+
+**List panel sizing:** `styles.fileList={{ width: '20rem' }}` or CSS variables `--fv-multi-file-list-width`, `--fv-multi-file-list-max-height`, `--fv-multi-file-list-strip-height`.
+
+**Customization:** same three levels as header — `classNames`/`styles` (1), `extraFileListHeader` (2), `renderFileListItem` / `renderFileList` (3).
+
 ### Framework Guides (Vite & Next.js)
 
 #### Next.js (App Router)
@@ -344,6 +371,32 @@ The main shell component containing the header toolbar and the appropriate viewe
 | `onFullscreen`         | `() => void`              | —                                 | Custom fullscreen handler (default opens internal modal)   |
 | `dialogClassNames`     | `{ content?: string }`    | —                                 | Modal overlay layer only                                   |
 | `pdfViewerProps`       | `Object`                  | —                                 | Props passed down to the PdfViewer                         |
+
+
+### MultiFileViewer
+
+Multi-file shell: file list + active `FileViewer` preview.
+
+
+| Prop | Type | Default | Description |
+| ---- | ---- | ------- | ----------- |
+| `files` | `ViewerFileItem[]` | — | `{ id?, name, extension, url, pdfViewerProps? }[]` |
+| `layout` | `'sidebar' \| 'stack'` | `'sidebar'` | Sidebar list or horizontal stack strip |
+| `stackPosition` | `'top' \| 'bottom'` | `'top'` | Stack strip above or below preview |
+| `fileListCollapsible` | `boolean` | `true` (sidebar) | Show collapse toggle on the list panel |
+| `fileListCollapsed` | `boolean` | — | Controlled collapsed state |
+| `defaultFileListCollapsed` | `boolean` | `false` | Initial collapsed state |
+| `onFileListCollapsedChange` | `(collapsed) => void` | — | Collapse toggle callback |
+| `activeIndex` | `number` | — | Controlled active file index |
+| `defaultActiveIndex` | `number` | `0` | Uncontrolled initial index |
+| `onActiveIndexChange` | `(index, file) => void` | — | Selection callback |
+| `hideFileListWhenSingle` | `boolean` | `true` | Hide list when only one file |
+| `classNames` / `styles` | slots | — | `fileList`, `fileListItem`, `preview`, … |
+| `extraFileListHeader` | `ReactNode \| fn` | — | Header above file list |
+| `renderFileListItem` | `(props) => ReactNode` | — | Replace a list item |
+| `renderFileList` | `(props) => ReactNode` | — | Replace entire list panel |
+
+All other `FileViewer` props (except `name`, `extension`, `url`) are forwarded to the active preview.
 
 
 ### PdfViewer

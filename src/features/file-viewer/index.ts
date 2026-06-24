@@ -1,4 +1,5 @@
 export { FileViewer } from './FileViewer'
+export { MultiFileViewer } from './MultiFileViewer'
 export type {
   FileViewerClassNames,
   FileViewerCloseButtonContext,
@@ -11,6 +12,19 @@ export type {
   FileViewerProps,
   FileViewerStyles,
 } from './FileViewer'
+export type {
+  MultiFileViewerClassNames,
+  MultiFileViewerDialogClassNames,
+  MultiFileViewerDialogStyles,
+  MultiFileViewerLayout,
+  MultiFileViewerStackPosition,
+  MultiFileViewerStyles,
+  FileListHeaderContext,
+  FileListItemRenderProps,
+  FileListRenderProps,
+  ViewerFileItem,
+  MultiFileViewerProps,
+} from './MultiFileViewer'
 export { default as PdfViewer } from './PdfViewer'
 export type {
   PdfViewerClassNames,
@@ -53,10 +67,11 @@ export {
   getFileViewerDefaults,
   resetFileViewerDefaults,
   resolveImageViewerProps,
+  resolveMultiFileViewerProps,
   resolvePdfViewerProps,
   setFileViewerDefaults,
 } from './config'
-export type { DeepPartial, FileViewerDefaults } from './config'
+export type { DeepPartial, FileViewerDefaults, ResolvedMultiFileViewerOptions } from './config'
 export type { SlotStyle } from './customization-types'
 export {
   defaultFileViewerTranslations,
@@ -73,4 +88,5 @@ export type {
   PdfViewerTranslations,
   UnsupportedFileTypeParams,
   ViewerLanguage,
+  MultiFileViewerTranslations,
 } from './translations'

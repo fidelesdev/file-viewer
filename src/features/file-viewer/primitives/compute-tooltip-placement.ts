@@ -1,4 +1,4 @@
-export type TooltipSide = 'top' | 'bottom'
+export type TooltipSide = 'top' | 'bottom' | 'left' | 'right'
 
 export type TooltipPlacement = {
   top: number
@@ -19,30 +19,68 @@ type ComputeTooltipPlacementInput = {
 
 type ResolveSideInput = ComputeTooltipPlacementInput & {
   padding: number
+  viewportWidth: number
   viewportHeight: number
 }
 
 function resolveSide({
   preferredSide,
   triggerRect,
+  contentWidth,
   contentHeight,
   sideOffset,
   padding,
+  viewportWidth,
   viewportHeight,
 }: ResolveSideInput): TooltipSide {
   const spaceAbove = triggerRect.top - padding
   const spaceBelow = viewportHeight - triggerRect.bottom - padding
-  const needed = contentHeight + sideOffset
+  const spaceLeft = triggerRect.left - padding
+  const spaceRight = viewportWidth - triggerRect.right - padding
+  const neededVertical = contentHeight + sideOffset
+  const neededHorizontal = contentWidth + sideOffset
 
-  if (preferredSide === 'top') {
-    if (spaceAbove >= needed) return 'top'
-    if (spaceBelow >= needed) return 'bottom'
-    return spaceBelow > spaceAbove ? 'bottom' : 'top'
+  const canPlace = (side: TooltipSide): boolean => {
+    switch (side) {
+      case 'top':
+        return spaceAbove >= neededVertical
+      case 'bottom':
+        return spaceBelow >= neededVertical
+      case 'left':
+        return spaceLeft >= neededHorizontal
+      case 'right':
+        return spaceRight >= neededHorizontal
+      default:
+        return false
+    }
   }
 
-  if (spaceBelow >= needed) return 'bottom'
-  if (spaceAbove >= needed) return 'top'
-  return spaceAbove > spaceBelow ? 'top' : 'bottom'
+  if (canPlace(preferredSide)) {
+    return preferredSide
+  }
+
+  const fallbacks: Record<TooltipSide, TooltipSide[]> = {
+    top: ['bottom', 'right', 'left'],
+    bottom: ['top', 'right', 'left'],
+    left: ['right', 'top', 'bottom'],
+    right: ['left', 'top', 'bottom'],
+  }
+
+  for (const side of fallbacks[preferredSide]) {
+    if (canPlace(side)) {
+      return side
+    }
+  }
+
+  const spaces: Array<{ side: TooltipSide; space: number }> = [
+    { side: 'top', space: spaceAbove },
+    { side: 'bottom', space: spaceBelow },
+    { side: 'left', space: spaceLeft },
+    { side: 'right', space: spaceRight },
+  ]
+
+  spaces.sort((sideA, sideB) => sideB.space - sideA.space)
+  return spaces[0]?.side ?? preferredSide
 }
 
 export function computeTooltipPlacement(
@@ -55,19 +93,38 @@ export function computeTooltipPlacement(
   const side = resolveSide({
     ...input,
     padding,
-    viewportHeight,
     viewportWidth,
+    viewportHeight,
   })
 
-  const top =
-    side === 'top'
-      ? input.triggerRect.top - input.sideOffset - input.contentHeight
-      : input.triggerRect.bottom + input.sideOffset
+  let top = 0
+  let left = 0
 
-  let left =
-    input.triggerRect.left +
-    input.triggerRect.width / 2 -
-    input.contentWidth / 2
+  if (side === 'top') {
+    top = input.triggerRect.top - input.sideOffset - input.contentHeight
+    left =
+      input.triggerRect.left +
+      input.triggerRect.width / 2 -
+      input.contentWidth / 2
+  } else if (side === 'bottom') {
+    top = input.triggerRect.bottom + input.sideOffset
+    left =
+      input.triggerRect.left +
+      input.triggerRect.width / 2 -
+      input.contentWidth / 2
+  } else if (side === 'left') {
+    top =
+      input.triggerRect.top +
+      input.triggerRect.height / 2 -
+      input.contentHeight / 2
+    left = input.triggerRect.left - input.sideOffset - input.contentWidth
+  } else {
+    top =
+      input.triggerRect.top +
+      input.triggerRect.height / 2 -
+      input.contentHeight / 2
+    left = input.triggerRect.right + input.sideOffset
+  }
 
   const maxLeft = viewportWidth - padding - input.contentWidth
   if (left < padding) {
@@ -76,13 +133,12 @@ export function computeTooltipPlacement(
     left = Math.max(padding, maxLeft)
   }
 
-  let clampedTop = top
   const maxTop = viewportHeight - padding - input.contentHeight
-  if (clampedTop < padding) {
-    clampedTop = padding
-  } else if (clampedTop > maxTop) {
-    clampedTop = Math.max(padding, maxTop)
+  if (top < padding) {
+    top = padding
+  } else if (top > maxTop) {
+    top = Math.max(padding, maxTop)
   }
 
-  return { top: clampedTop, left, side }
+  return { top, left, side }
 }

@@ -1,6 +1,7 @@
 import {
   cloneElement,
   isValidElement,
+  type FocusEvent,
   type MouseEvent,
   type ReactElement,
   type ReactNode,
@@ -23,6 +24,28 @@ function mergeRefs<T>(...refs: Array<Ref<T> | undefined>): (value: T) => void {
   }
 }
 
+function mergeHandlers<Event>(
+  handlerA?: (event: Event) => void,
+  handlerB?: (event: Event) => void,
+): ((event: Event) => void) | undefined {
+  if (!handlerA && !handlerB) {
+    return undefined
+  }
+
+  if (!handlerA) {
+    return handlerB
+  }
+
+  if (!handlerB) {
+    return handlerA
+  }
+
+  return (event: Event) => {
+    handlerA(event)
+    handlerB(event)
+  }
+}
+
 export function renderAsChild(
   asChild: boolean | undefined,
   child: ReactNode,
@@ -40,6 +63,10 @@ export function renderAsChild(
     className?: string
     style?: React.CSSProperties
     onClick?: (event: MouseEvent) => void
+    onMouseEnter?: (event: MouseEvent) => void
+    onMouseLeave?: (event: MouseEvent) => void
+    onFocus?: (event: FocusEvent) => void
+    onBlur?: (event: FocusEvent) => void
     ref?: Ref<HTMLElement>
   }>
 
@@ -52,18 +79,33 @@ export function renderAsChild(
     ...element.props.style,
   }
 
-  const propsOnClick = props.onClick as ((event: MouseEvent) => void) | undefined
   const propsRef = props.ref as Ref<HTMLElement> | undefined
 
   return cloneElement(element, {
-    ...props,
     ...element.props,
+    ...props,
     className: mergedClassName || undefined,
     style: Object.keys(mergedStyle).length > 0 ? mergedStyle : undefined,
     ref: mergeRefs(propsRef, element.props.ref),
-    onClick: (event: MouseEvent) => {
-      propsOnClick?.(event)
-      element.props.onClick?.(event)
-    },
+    onClick: mergeHandlers(
+      props.onClick as ((event: MouseEvent) => void) | undefined,
+      element.props.onClick,
+    ),
+    onMouseEnter: mergeHandlers(
+      props.onMouseEnter as ((event: MouseEvent) => void) | undefined,
+      element.props.onMouseEnter,
+    ),
+    onMouseLeave: mergeHandlers(
+      props.onMouseLeave as ((event: MouseEvent) => void) | undefined,
+      element.props.onMouseLeave,
+    ),
+    onFocus: mergeHandlers(
+      props.onFocus as ((event: FocusEvent) => void) | undefined,
+      element.props.onFocus,
+    ),
+    onBlur: mergeHandlers(
+      props.onBlur as ((event: FocusEvent) => void) | undefined,
+      element.props.onBlur,
+    ),
   })
 }

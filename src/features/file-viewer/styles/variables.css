@@ -46,4 +46,9 @@
   --fv-max-page-width: 50rem;
   --fv-image-max-height: calc(100dvh - 10rem);
   --fv-toolbar-height: 3.25rem;
+
+  --fv-multi-file-list-width: 15rem;
+  --fv-multi-file-list-collapsed-width: 2.75rem;
+  --fv-multi-file-list-strip-height: 3.25rem;
+  --fv-multi-file-list-toolbar-height: 3rem;
 }

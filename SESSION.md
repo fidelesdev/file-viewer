@@ -1,4 +1,4 @@
-# SESSION Export — 2026-06-23
+# SESSION Export — 2026-06-24
 
 ## Índice
 
@@ -16,14 +16,14 @@
 ## Metadados
 
 | Campo | Valor |
-|-------|--------|
-| **Data/hora exportação** | 2026-06-23 (local) |
-| **Workspace** | `/home/s4s-01/Desktop/file-viewer` |
-| **Transcript ID** | `c3685bec-8966-420f-8d55-c52d61f5b251` |
-| **Branch ativa** | `feat/0001-many-files` @ `6d60a86` (wip) |
-| **Branch base** | `master` @ `c94e4c3` (v0.4.1 toolbar API) |
-| **Working tree** | Limpo (sem alterações não commitadas) |
-| **Último pedido** | `/save-session` — exportar contexto da sessão |
+|-------|-------|
+| **Data/hora exportação** | 2026-06-24 (sessão contínua desde 2026-06-23) |
+| **Workspace** | `/home/matheus/Projects/file-viewer` |
+| **Transcript ID** | `76c7cf4f-7003-48eb-91c4-06e234716206` |
+| **Branch** | `feat/0001-many-files` (tracking `origin/feat/0001-many-files`) |
+| **Último commit** | `a3acc57` — wip |
+| **Versão package.json** | `0.5.0` |
+| **Issue GitHub** | [#1 — MultiFileViewer](https://github.com/fidelesdev/file-viewer/issues/1) |
 
 ---
 
@@ -31,261 +31,292 @@
 
 ### Nome e propósito
 
-**`@fdls/file-viewer`** — biblioteca React npm para preview in-app de arquivos: shell (`FileViewer`), visualizador PDF (scroll, paginação, zoom) e imagem (pan/zoom). UI própria (tooltips, dialog, ícones); sem peer deps de Radix ou icon libs.
-
-### Estrutura (mono-repo)
-
-```
-file-viewer/
-├── src/
-│   ├── app/App.tsx              # Entry playground (BrowserRouter)
-│   ├── docs/                    # Site de documentação interativa (NÃO publicado no npm)
-│   ├── features/file-viewer/    # Código da lib (publicado em dist/)
-│   ├── main.tsx
-│   └── styles/index.css
-├── public/samples/              # PDFs e imagem para demos
-├── dist/                        # Build lib (gitignored)
-├── playground-dist/             # Build vite playground (gitignored)
-├── scripts/                     # bundle-lib-css, prepend-style-import
-├── package.json                 # v0.4.1
-├── vite.config.ts               # outDir: playground-dist
-└── tsup.config.ts               # build lib
-```
+**`@fdls/file-viewer`** — biblioteca React npm para preview de arquivos in-app (`FileViewer`, `PdfViewer`, `ImageViewer`). Repositório único (não polyrepo).
 
 ### Stack
 
-| Camada | Tecnologia |
-|--------|------------|
-| Linguagem | TypeScript ~5.8.3 |
-| UI | React 19, Tailwind CSS v4 |
-| PDF | react-pdf ~9.2, pdfjs-dist 4.8.69 |
-| Imagem | react-zoom-pan-pinch ^4 |
-| Print | react-to-print ^3 |
-| Playground router | react-router-dom ^6.30.4 (devDependency) |
-| Build lib | tsup 8 |
-| Build playground | Vite 6 |
+- **Runtime:** Node >= 18
+- **Linguagem:** TypeScript
+- **UI:** React 19, Vite 6
+- **Estilos lib:** Plain CSS (tokens em `variables.css`, sem Tailwind na lib)
+- **Docs/playground:** Vite + React Router + Tailwind v4 (apenas docs)
+- **PDF:** react-pdf / pdf.js
+- **Imagem:** react-zoom-pan-pinch
+- **Build lib:** tsup → `dist/`
 
-### Scripts
+### Comandos úteis
 
-- `npm run dev` — playground docs em `http://localhost:5173`
-- `npm run build` — `tsc --noEmit` + vite → `playground-dist/`
-- `npm run build:lib` — tsup + CSS bundle → `dist/`
-- `npm run preview` — preview do playground buildado
+```bash
+npm run dev          # playground docs (porta 5173/5174)
+npx tsc --noEmit     # typecheck
+npm run build:lib    # build biblioteca
+npm run build        # build playground
+```
 
-### Infra / deploy
+### Branch e git (snapshot export)
 
-- Pacote npm público `@fdls/file-viewer`
-- Playground **local only** (sem GitHub Pages nesta sessão)
-- PDF worker via CDN unpkg (`configureFileViewerPdfWorker`)
+```
+On branch feat/0001-many-files
+Changes not staged + untracked (MultiFileViewer v0.5.0 + iter UX)
+Último commit: a3acc57 wip
+Base master: c94e4c3 (v0.4.1 floating toolbar)
+```
 
-### Git
-
-| Branch | Commit | Descrição |
-|--------|--------|-----------|
-| `master` | `c94e4c3` | v0.4.1 — floating toolbar API (extraToolbarActions, renderToolbarActions, compose-extra-actions-area) |
-| `master` | `1362a49` | v0.4.0 — shell achatado, header API 3 níveis, fullscreen rename |
-| `feat/0001-many-files` | `6d60a86` | **wip** — interactive docs playground (~58 arquivos, +2722 linhas) |
+**Não commitar** SESSION.md automaticamente (regra do usuário).
 
 ---
 
 ## Atividade atual
 
-### Pedido imediato
+### Último pedido
 
-Exportar sessão via `/save-session` → este arquivo `SESSION.md`.
+`/save-session` — exportar contexto completo para `SESSION.md`.
 
-### Estado geral do trabalho
+### Estado
 
-| Entrega | Status |
-|---------|--------|
-| Toolbar flutuante API v0.4.1 | ✅ Commitado em `master` (`c94e4c3`) |
-| Fix divider/spacing toolbar | ✅ Incluído no commit v0.4.1 |
-| Props `extraToolbarActions` no FileViewer | ✅ Incluído no commit v0.4.1 |
-| Interactive docs playground (plano `interactive_docs_playground_702f1e74`) | ✅ Implementado; commit **wip** em `feat/0001-many-files` |
-| `/save-session` | ✅ Em andamento → concluído com este arquivo |
+**Concluído na sessão (UX MultiFileViewer sidebar colapsável):**
 
-### Arquivos tocados na atividade docs (commit `6d60a86`)
+- Animação de colapso sem salto do ícone (overflow + padding fixo)
+- Ícones `PanelRightOpen` / `PanelRightClose` (estado atual, não próxima ação)
+- Tooltips nos itens colapsados (`side="right"`, `openOnHover`, botão nativo)
+- Tooltip estático no botão toggle: `fileListToggleTooltip` ("Collapse / expand file list")
+- Alinhamento altura toolbar sidebar ↔ header preview (`3rem` compartilhado)
+- Título preview: `0.875rem` (14px)
+- Ícones header + collapse: `1.375rem`
+- Toolbar/header com `height` fixo, `box-shadow` inset no lugar de `border-bottom` (+1px)
 
-- **Novos:** `src/docs/**` (49 arquivos TS/TSX), `public/samples/*`
-- **Alterados:** `src/app/App.tsx`, `src/main.tsx`, `src/styles/index.css`, `index.html`, `package.json`, `package-lock.json`
+### Arquivos tocados na atividade recente
 
-### Decisões
-
-- **Idioma docs:** inglês (`setFileViewerDefaults({ language: 'english' })`)
-- **Deploy:** local only (`npm run dev`); sem HashRouter/BrowserRouter para GH Pages
-- **react-router-dom v6** (não v7) por compatibilidade Node 18 no ambiente
-- **Layout:** NestJS-style — sidebar colapsável esquerda, conteúdo centro, TOC direita
-- **Lib não alterada** no commit wip — apenas playground
+- `src/features/file-viewer/styles/multi-file-viewer.css`
+- `src/features/file-viewer/styles/variables.css`
+- `src/features/file-viewer/components/FileListItem.tsx`
+- `src/features/file-viewer/components/FileListPanel.tsx`
+- `src/features/file-viewer/components/FileViewerTooltip.tsx`
+- `src/features/file-viewer/primitives/as-child.ts`
+- `src/features/file-viewer/primitives/tooltip.tsx`
+- `src/features/file-viewer/primitives/compute-tooltip-placement.ts`
+- `src/features/file-viewer/translations.ts`
+- `src/features/file-viewer/components/icons/PanelRightClose.tsx`
+- `src/features/file-viewer/components/icons/PanelRightOpen.tsx`
 
 ---
 
 ## Histórico da sessão
 
-### 1. Toolbar flutuante API (espelho do header) — v0.4.1
+### Fase 1 — Implementação MultiFileViewer v0.5.0
 
-**Pedido:** Implementar plano `toolbar_extra_actions_api_dfc72bdb`.
+**Pedido:** Issue #1 — múltiplos arquivos com listagem sidebar e stack.
 
 **Entregue:**
-- Tipos: `ViewerExtraActionsSide`, `PdfToolbarActionsContext`, `ImageToolbarActionsContext`, slots `toolbarBuiltins` / `toolbarExtra`
-- `compose-extra-actions-area.tsx` — DRY header + toolbars
-- `PdfViewer` / `ImageViewer`: `extraToolbarActions`, `extraToolbarActionsSide`, `renderToolbarActions`
-- `FileViewer`: mesmas props repassadas ao viewer ativo
-- CSS `.fv-toolbar-builtins`, `.fv-toolbar-extra`, fix divider (`align-self: stretch`, `gap: 0.5rem`)
-- README, CHANGELOG 0.4.1, bump package.json
 
-**Commit:** `c94e4c3` on `master`
+- `MultiFileViewer` orquestra lista + `FileViewer` interno
+- Layouts: `sidebar`, `stack` (horizontal strip; `stackOrientation` removido depois)
+- Customização L1 (`classNames`/`styles`/CSS vars), L2 (`extraFileListHeader`), L3 (`renderFileListItem`/`renderFileList`)
+- `setFileViewerDefaults({ multiFileViewer })`
+- Hooks `useControllableIndex`, `useControllableBoolean`
+- Docs: Overview + Level 1/2/3, demos inline/modal
+- `README.md`, `CHANGELOG.md`, `package.json` → 0.5.0
+- `TODO.md` na raiz
+- Builds: `tsc`, `build:lib`, `build` OK
 
----
+**Arquivos principais criados:**
 
-### 2. Bugfix toolbar — divider e espaçamento
-
-**Problema:** Separador vertical invisível; gap maior que antes.
-
-**Causa:** Wrapper `.fv-toolbar-builtins` com `gap: 0.75rem`; `height: 100%` no divider dentro de flex sem altura definida.
-
-**Fix:**
-- CSS: `align-self: stretch`, gap `0.5rem`, wrappers com `align-items: stretch`
-- `compose-extra-actions-area`: sem extras, retorna builtins **wrapped** (nível 1 slots preservados)
-
----
-
-### 3. Props toolbar no FileViewer
-
-**Pedido:** Expor `extraToolbarActions` diretamente no `FileViewer` (não só via `pdfViewerProps`).
-
-**Entregue:** Props + merge layer em `FileViewer.tsx` e `config.ts` defaults.
+- `src/features/file-viewer/MultiFileViewer.tsx`
+- `src/features/file-viewer/components/FileListPanel.tsx`
+- `src/features/file-viewer/components/FileListItem.tsx`
+- `src/features/file-viewer/styles/multi-file-viewer.css`
+- `src/docs/pages/file-viewer/MultiFileViewer*.tsx`
+- `src/docs/components/MultiFileViewerDemo.tsx`
 
 ---
 
-### 4. Auditoria pré-commit
+### Fase 2 — Fixes layout stack
 
-**Verificado:** sem `any`, tsc OK, build:lib OK. Fix import morto `Download` em `App.tsx`.
+**Problema:** strip horizontal crescia verticalmente.
 
-**Commit:** `c94e4c3`
-
----
-
-### 5. Interactive documentation playground
-
-**Pedido:** Site completo com exemplos visuais para cada customização/prop; layout NestJS (sidebar + centro + TOC).
-
-**Plano:** `interactive_docs_playground_702f1e74.plan.md`
-
-**Entregue (commit `6d60a86` wip):**
-
-#### Layout (`src/docs/layout/`)
-- `DocsLayout` — header fixo, sidebar, main, TOC
-- `DocsSidebar` — nav colapsável, mobile drawer, `data-collapsed`
-- `DocsOnThisPage` — TOC com `IntersectionObserver`
-- `DocPage`, `DocSection` — anchors + registro para TOC
-
-#### Componentes (`src/docs/components/`)
-- `LiveDemo`, `ModalDemo`, `InlineFileViewerDemo`
-- `CodeBlock` (copy), `PropTable`, `SlotHighlighter`, `EventLogPanel`
-
-#### 25 rotas (`src/docs/routes.tsx`)
-
-| Grupo | Rotas |
-|-------|-------|
-| Getting started | `/`, `/getting-started` |
-| FileViewer | 11 páginas (overview, modes, header L1–L3, toolbar L1–L3, styling, callbacks, i18n) |
-| PdfViewer | 8 páginas |
-| ImageViewer | 4 páginas |
-| Globals | 4 páginas |
-| Reference | `/api-reference`, `/components/tooltip` |
-
-#### Assets (`public/samples/`)
-- `multipage.pdf` (~2.9 MB, tracemonkey)
-- `single-page.pdf` (~18 KB)
-- `photo.jpg` (~12 KB)
-
-#### Verificação
-- `npx tsc --noEmit` — OK
-- `npm run build` (playground-dist) — OK
+**Solução:** `.fv-multi-file-list--stack` com `flex: 0 0 auto` + altura fixa via `--fv-multi-file-list-strip-height`.
 
 ---
 
-### 6. Listagem de componentes públicos (Ask mode)
+### Fase 3 — Sidebar colapsável (refactor)
 
-Resposta documentando exports de `@fdls/file-viewer`: `FileViewer`, `PdfViewer`, `ImageViewer`, `FileViewerTooltip*`, funções worker/defaults/i18n, tipos. Internos não exportados: `ViewerFloatingToolbar`, icons, primitives.
+**Mudanças:**
+
+- Botão collapse **dentro** da toolbar (topo da sidebar)
+- Animação width expanded ↔ collapsed (`--fv-multi-file-list-collapsed-width: 2.75rem`)
+- Colapsado: ícones visíveis, labels clipados, tooltips só quando colapsado
+- Novos slots: `fileListShell`, `fileListToolbar`, `fileListCollapseButton`
+
+---
+
+### Fase 4 — Feedback UX (iterações do usuário)
+
+#### 4.1 Label sumia instantaneamente / ícone pulava
+
+- **Causa:** `justify-content: center` + `max-width: 0` / `opacity: 0` no label ao colapsar
+- **Fix inicial:** overflow hidden + clip pela largura animada
+- **Fix refinado:** `padding-inline: calc((var(--fv-multi-file-list-collapsed-width) - 1.25rem) / 2)` — usa largura **final** colapsada, não `100%` da largura atual (evita centralizar cedo demais)
+
+#### 4.2 Ícone collapse errado
+
+- **Antes:** `ChevronLeft` / `ChevronRight`
+- **Depois:** `PanelRightOpen` / `PanelRightClose` (Lucide-style), botão à direita da toolbar (`margin-left: auto`)
+- **Lógica ícone:** reflete **estado atual** (aberto → Open, fechado → Close), não próxima ação
+
+#### 4.3 Padding colapsado / ícone centralizado
+
+- Ícones arquivo: `fv-icon--sm` (1.25rem)
+- Largura colapsada: 2.75rem
+
+#### 4.4 Tooltips não apareciam
+
+- **Causa raiz:** `FileViewerTooltip` envolvia `<FileListItem />` (componente), ref do trigger não chegava ao `<button>`
+- **Fix:** prop `tooltip` em `FileListItem` envolvendo o **botão nativo**
+- **Melhorias:** `side="right"`, `openOnHover` (sem delay 300ms), `left`/`right` no `compute-tooltip-placement`
+- **Fix as-child:** merge de `onMouseEnter`, `onFocus`, etc. (não sobrescrever handlers)
+
+#### 4.5 Tooltip botão collapse
+
+- Chave única `fileListToggleTooltip`: "Collapse / expand file list" / "Minimizar / expandir lista de arquivos"
+- `aria-label` continua dinâmico (a11y)
+
+#### 4.6 Alinhamento headers (toolbar vs preview)
+
+- Token `--fv-multi-file-list-toolbar-height: 3rem`
+- Toolbar + `.fv-multi-file-preview .fv-shell-header` mesma `height`
+- Título: `0.875rem`
+- Ícones ações + collapse: `1.375rem`
+- Botão collapse: `1.375rem` (antes 1.75rem)
+- `box-shadow: inset 0 -1px` no toolbar (evita +1px do `border-bottom`)
+- `padding-block: 0` + `align-items: center` nos dois headers
+
+---
+
+### Fase 5 — Skills auxiliares (início de sessão anterior no transcript)
+
+- Criada skill `sync-session` (`~/.cursor/skills/sync-session/SKILL.md`) — oposto de `save-session`
 
 ---
 
 ## Pendências
 
-### Explícitas / recomendadas
+### Do TODO.md (follow-ups pós-v0.5.0)
 
-- [ ] **Renomear commit `wip`** → mensagem descritiva antes de merge em `master`
-- [ ] **Revisar manualmente** todas as 25 rotas no browser (`npm run dev`)
-- [ ] **Decidir merge** `feat/0001-many-files` → `master` (PR ou merge local)
-- [ ] **Opcional:** code-split routes (chunk 739 KB warning no build)
-- [ ] **Opcional:** sidebar collapsed mode — ícones `•` genéricos; melhorar UX colapsada
-- [ ] **Opcional:** adicionar `SESSION.md` ao `.gitignore` se não quiser versionar
+- [ ] Thumbnails reais na listagem
+- [ ] Drag-and-drop reorder
+- [ ] Lazy preload URLs adjacentes
+- [ ] Virtualização 100+ arquivos
+- [ ] Loading/error por item
+- [ ] Busca/filtro na listagem
+- [ ] Drawer mobile para listagem em modal
+- [ ] Mais extensões / txt / office
+- [ ] Testes unit + Playwright
+- [ ] Fechar issue #1 após release
 
-### NÃO fazer sem pedido explícito
+### Trabalho git pendente
 
-- Commitar `SESSION.md`
-- Push para remote
-- Alterar código em `src/features/file-viewer/` (lib npm)
-- Editar arquivos `.plan.md`
-- Deploy GitHub Pages
-- Rewrite README npm com conteúdo do playground
+- **Todas as mudanças v0.5.0 + UX estão uncommitted** em `feat/0001-many-files`
+- Usuário **não pediu commit** — não commitar sem pedido explícito
+- Considerar commit + release 0.5.0 + PR quando usuário solicitar
+
+### O que NÃO fazer sem pedido
+
+- Não commitar/push automaticamente
+- Não editar plan file `.cursor/plans/multifileviewer_component_0838e29f.plan.md`
+- Não refatorar escopo além do pedido
+- Não usar tipagem `any`
+- Não criar docs markdown extras não solicitados
 
 ---
 
 ## Código e arquivos-chave
 
-### Entry playground
+### CSS tokens MultiFileViewer (`variables.css`)
+
+```css
+--fv-multi-file-list-width: 15rem;
+--fv-multi-file-list-collapsed-width: 2.75rem;
+--fv-multi-file-list-strip-height: 3.25rem;
+--fv-multi-file-list-toolbar-height: 3rem;
+```
+
+### Colapso item (sem salto)
+
+```css
+/* padding usa largura FINAL colapsada, não 100% animada */
+.fv-multi-file-list-shell[data-layout='sidebar'][data-collapsed='true']
+  .fv-multi-file-list-item {
+  padding-inline: calc(
+    (var(--fv-multi-file-list-collapsed-width, 2.75rem) - 1.25rem) / 2
+  );
+}
+```
+
+### Headers alinhados
+
+```css
+.fv-multi-file-list-toolbar {
+  height: var(--fv-multi-file-list-toolbar-height, 3rem);
+  padding: 0 0.5rem;
+  box-shadow: inset 0 -1px 0 var(--fv-border-toolbar);
+}
+
+.fv-multi-file-preview .fv-shell-header {
+  height: var(--fv-multi-file-list-toolbar-height, 3rem);
+  padding-block: 0;
+  align-items: center;
+}
+
+.fv-multi-file-preview .fv-shell-header-title {
+  font-size: 0.875rem; /* 14px */
+}
+```
+
+### FileListItem tooltip (colapsado)
 
 ```tsx
-// src/app/App.tsx
-import { BrowserRouter } from 'react-router-dom'
-import { DocsRoutes } from '@/docs/routes'
+// FileListPanel passa:
+tooltip: showCollapsedTooltips ? file.name : undefined,
+tooltipSide: showCollapsedTooltips ? 'right' : undefined,
+tooltipOpenOnHover: showCollapsedTooltips,
 
-export function App() {
-  return (
-    <BrowserRouter>
-      <DocsRoutes />
-    </BrowserRouter>
-  )
-}
+// FileListItem envolve <button> diretamente:
+<FileViewerTooltip content={tooltip} side={tooltipSide} openOnHover={tooltipOpenOnHover}>
+  {button}
+</FileViewerTooltip>
 ```
 
-### Navegação (fonte única sidebar)
+### Traduções toggle sidebar
 
-- `src/docs/navigation.ts` — `docsNavigation: NavGroup[]`
-- `src/docs/routes.tsx` — `<Routes>` com ~25 `<Route>`
-
-### Samples
-
-```ts
-// src/docs/demos/assets.ts
-export const SAMPLES = {
-  multipagePdf: '/samples/multipage.pdf',
-  singlePagePdf: '/samples/single-page.pdf',
-  photoJpg: '/samples/photo.jpg',
-}
+```typescript
+fileListToggleTooltip: 'Collapse / expand file list',        // EN
+fileListToggleTooltip: 'Minimizar / expandir lista de arquivos', // PT
 ```
 
-### Lib — API toolbar (v0.4.1, master)
+### MultiFileViewer — props principais
 
-Três níveis (header e toolbar):
+```typescript
+files: ViewerFileItem[]
+layout?: 'sidebar' | 'stack'
+stackPosition?: 'top' | 'bottom'
+activeIndex / defaultActiveIndex / onActiveIndexChange
+hideFileListWhenSingle?: boolean  // default true
+fileListCollapsible?: boolean     // default true for sidebar
+fileListCollapsed / defaultFileListCollapsed / onFileListCollapsedChange
+classNames / styles / extraFileListHeader / renderFileListItem / renderFileList
+// + props FileViewer (exceto name, extension, url)
+```
 
-| Nível | Header | Toolbar |
-|-------|--------|---------|
-| 1 | toggles, classNames/styles | toolbarBuiltins, toolbarExtra, global toolbar.* |
-| 2 | extraHeaderActions + side | extraToolbarActions + side |
-| 3 | renderHeaderActions | renderToolbarActions |
+### Estrutura componentes
 
-Precedência: nível 3 substitui montagem; `renderPagination={null}` esconde toolbar PDF inteira.
-
-### Arquivos lib alterados em v0.4.1 (master)
-
-- `FileViewer.tsx`, `PdfViewer.tsx`, `ImageViewer.tsx`
-- `customization-types.ts`, `config.ts`, `index.ts`
-- `utils/compose-extra-actions-area.tsx` (novo)
-- `styles/toolbar.css`
-- `CHANGELOG.md`, `README.md`, `package.json`
+```
+MultiFileViewer
+├── FileViewerTooltipProvider
+├── FileListPanel (sidebar/stack)
+│   ├── toolbar (collapse button + extra header)
+│   └── FileListItem[] (tooltip quando colapsado)
+└── preview → FileViewer (key por url/id)
+```
 
 ---
 
@@ -293,105 +324,75 @@ Precedência: nível 3 substitui montagem; `renderPagination={null}` esconde too
 
 ### Workspace Rules
 
-*(Nenhum `.cursor/rules/*.mdc` no repositório file-viewer.)*
+**Prisma schema conventions** (globs `**/*.prisma` — não aplicável a este repo, sem Prisma):
 
-**Agent requestable (Prisma plugin):** migration-best-practices, schema-conventions — não aplicáveis a este repo (sem Prisma).
+- Relations bidirecionais, IDs, timestamps, indexes, unique constraints
 
----
+### User Rules (resumo fiel — aplicar sempre)
 
-### User Rules (resumo fiel integral)
+#### Git / PR
 
-#### Git / commits
-- **Só commitar quando pedido explicitamente**
-- Protocolo: git status + diff + log; HEREDOC para mensagem; nunca `--no-verify`, force push main, amend exceto condições estritas
-- **Não push** sem pedido
-
-#### PRs
-- Usar `gh` para GitHub; corpo com Summary + Test plan
-
-#### Comunicação
-- Code citations: ` ```startLine:endLine:filepath ` em linha própria
-- Markdown links completos; prosa clara; sem engagement baiting
-- Mermaid/ascii quando útil para fluxos complexos
+- **Só commitar quando usuário pedir** — protocolo git safety (no amend agressivo, no force push main)
+- PRs via `gh` com template Summary + Test plan
 
 #### Código
-- **NUNCA `any`** — usar `unknown`, generics, Record
-- **Aliases semânticos** em array callbacks (nunca `e`, `d`, `i`)
-- Minimize scope — diff mínimo; não fazer o não pedido
-- Match convenções existentes; comments só se não óbvio
-- Tests só se pedidos ou meaningful
 
-#### Tailwind / data attributes
-- **Não** concatenar variáveis em `className` para estados — usar `data-*` + modifiers
-- **Não** cores arbitrárias `bg-[#...]` — tokens do projeto
-- Preferir escala Tailwind; REM se inevitável
-- `group` + `group-data-[...]` para DRY
+- **Nunca `any`**
+- Escopo mínimo — não fazer o não pedido
+- Aliases semânticos em `.map`/`.filter` (nunca `e`, `d`, `i`)
+- Preferir data-attributes + Tailwind modifiers (não concat className)
+- Cores via tokens, não arbitrárias
+- Hooks com prefixo `use` para API calls
+- `npx tsc --noEmit` após implementação
+- Componentizar só com critério (DRY, complexidade, reuse)
 
-#### Estado / UX
-- Debounce em busca; feedback loading/error; aria-labels
+#### Comunicação
 
-#### API
-- Hooks customizados para queries; DTOs; TanStack Query pattern quando aplicável
+- Code citations: ` ```startLine:endLine:path ` 
+- Prosa clara, proporção ao task
+- Markdown links para paths/URLs
 
-#### TypeScript (dev-rules)
-- Rodar `npx tsc --noEmit` ao finalizar
-- ESLint limpo
+#### Dev rules (alwaysApply)
 
-#### Componentização
-- Extrair só com repetição/complexidade/reuso; config objects; `cn()` para classes
-
-#### DRY
-- Processar valores uma vez antes de map; nomes semânticos; hooks com prefixo `use`
-
-#### dev-rules (alwaysApply)
 - Nunca `any`
-- Nunca fazer o não pedido (perguntar se incompleto)
-- Aliases semânticos em arrays
+- Menos linhas para tarefas simples
+- Não fazer o não pedido; se incompleto, perguntar
 
----
+### Agent/Skill Rules
 
-### Agent / Skill Rules
-
-#### save-session (esta exportação)
-- Sobrescrever `SESSION.md` no caminho informado (default: workspace root)
-- Conteúdo extenso: metadados, projeto, histórico, pendências, rules, código crítico
-- Não commitar SESSION.md automaticamente
-- Não editar plan files ao exportar
-
-#### Outras skills disponíveis (não usadas nesta sessão)
-- project-manager, pw2c-knowledge-base, prisma-*, shadcn, superpowers (brainstorming, verification-before-completion, etc.)
+- **save-session:** exportar SESSION.md completo, sobrescrever, não commitar
+- **sync-session:** oposto — restaurar contexto de SESSION.md
+- Não editar plan file anexado pelo usuário ao exportar sessão
 
 ---
 
 ## Documentos de referência
 
-| Documento | Path | Notas |
-|-----------|------|-------|
-| Plano toolbar API | `.cursor/plans/toolbar_extra_actions_api_dfc72bdb.plan.md` | v0.4.1 — implementado em master |
-| Plano docs playground | `.cursor/plans/interactive_docs_playground_702f1e74.plan.md` | Implementado em feat/0001-many-files |
-| CHANGELOG | `CHANGELOG.md` | 0.4.1 additive |
-| README npm | `README.md` | Header + toolbar customization |
-| Transcript | `agent-transcripts/c3685bec-8966-420f-8d55-c52d61f5b251/` | Histórico completo |
+| Arquivo | Descrição |
+|---------|-----------|
+| `TODO.md` | Checklist v0.5.0 (core done) + follow-ups |
+| `CHANGELOG.md` | Entrada 0.5.0 MultiFileViewer |
+| `README.md` | API MultiFileViewer documentada |
+| `AGENTS.md` | Untracked no início da sessão |
+| Issue #1 | Requisito original MultiFileViewer |
+| Docs live | `/file-viewer/multi`, `#sidebar`, `#collapse` |
+| Transcript | `76c7cf4f-7003-48eb-91c4-06e234716206` |
 
-### Comandos de retomada
+### Demo URLs (dev)
 
-```bash
-cd /home/s4s-01/Desktop/file-viewer
-git checkout feat/0001-many-files   # docs playground
-npm run dev                          # http://localhost:5173
-npx tsc --noEmit
-npm run build                        # playground-dist
-npm run build:lib                    # dist npm package
 ```
-
-### API pública npm (referência rápida)
-
-**Componentes:** `FileViewer`, `PdfViewer`, `ImageViewer`, `FileViewerTooltip`, `FileViewerTooltipProvider`
-
-**Funções:** `configureFileViewerPdfWorker`, `setFileViewerDefaults`, `getFileViewerDefaults`, `resetFileViewerDefaults`, `getFileViewerTranslations`, …
-
-**Versão publicada:** `0.4.1`
+http://localhost:5173/file-viewer/multi
+http://localhost:5173/file-viewer/multi#collapse  # sidebar colapsável
+```
 
 ---
 
-*Fim do export — ~450 linhas, workspace `/home/s4s-01/Desktop/file-viewer/SESSION.md`*
+## Validação última sessão UX
+
+- `npx tsc --noEmit` — OK
+- Tooltips colapsados verificados via browser (trigger no button, placement right)
+- Headers toolbar/preview alinhados a 3rem (último fix box-shadow + height fixo)
+
+---
+
+*Export gerado por save-session. Próximo passo sugerido pelo usuário: commit/release 0.5.0 ou follow-ups do TODO.md.*

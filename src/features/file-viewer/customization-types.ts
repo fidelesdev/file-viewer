@@ -169,3 +169,71 @@ export type FileViewerTooltipClassNames = {
 export type FileViewerTooltipStyles = {
   content?: SlotStyle
 }
+
+export type MultiFileViewerLayout = 'sidebar' | 'stack'
+
+export type MultiFileViewerStackPosition = 'top' | 'bottom'
+
+export type MultiFileViewerClassNames = {
+  root?: string
+  body?: string
+  fileListShell?: string
+  fileListToolbar?: string
+  fileList?: string
+  fileListHeader?: string
+  fileListCollapseButton?: string
+  fileListItem?: string
+  fileListItemWrap?: string
+  fileListItemIcon?: string
+  fileListItemLabel?: string
+  preview?: string
+  empty?: string
+}
+
+export type MultiFileViewerStyles = {
+  root?: SlotStyle
+  body?: SlotStyle
+  fileListShell?: SlotStyle
+  fileListToolbar?: SlotStyle
+  fileList?: SlotStyle
+  fileListHeader?: SlotStyle
+  fileListCollapseButton?: SlotStyle
+  fileListItem?: SlotStyle
+  fileListItemWrap?: SlotStyle
+  fileListItemIcon?: SlotStyle
+  fileListItemLabel?: SlotStyle
+  preview?: SlotStyle
+  empty?: SlotStyle
+}
+
+export type MultiFileViewerDialogClassNames = {
+  content?: string
+}
+
+export type MultiFileViewerDialogStyles = {
+  content?: SlotStyle
+}
+
+export type FileListHeaderContext = {
+  files: readonly { name: string; extension: string; url: string; id?: string }[]
+  activeIndex: number
+  layout: MultiFileViewerLayout
+  fileListCollapsed: boolean
+}
+
+export type FileListItemRenderProps = {
+  file: { name: string; extension: string; url: string; id?: string }
+  index: number
+  isActive: boolean
+  select: () => void
+  defaultItem: ReactNode
+}
+
+export type FileListRenderProps = {
+  files: readonly { name: string; extension: string; url: string; id?: string }[]
+  activeIndex: number
+  onSelect: (index: number) => void
+  defaultList: ReactNode
+  layout: MultiFileViewerLayout
+  fileListCollapsed: boolean
+}

@@ -241,9 +241,12 @@ export function TooltipRoot({ children }: { children: ReactNode }) {
 export function TooltipTrigger({
   asChild,
   children,
+  openOnHover = false,
 }: {
   asChild?: boolean
   children: ReactElement
+  /** When true, pointer enter opens the tooltip immediately (no open delay). */
+  openOnHover?: boolean
 }) {
   const {
     open,
@@ -259,7 +262,14 @@ export function TooltipTrigger({
       triggerRef.current = node
     },
     'aria-describedby': open ? contentId : undefined,
-    onMouseEnter: () => scheduleOpen(),
+    onMouseEnter: () => {
+      if (openOnHover) {
+        openImmediately()
+        return
+      }
+
+      scheduleOpen()
+    },
     onMouseLeave: () => scheduleClose(),
     onFocus: () => openImmediately(),
     onBlur: () => scheduleClose(),

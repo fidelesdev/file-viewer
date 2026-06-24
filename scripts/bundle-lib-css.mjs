@@ -29,6 +29,7 @@ const libCssFiles = [
   join(rootDir, 'src/features/file-viewer/styles/toolbar.css'),
   join(rootDir, 'src/features/file-viewer/styles/image-viewer.css'),
   join(rootDir, 'src/features/file-viewer/styles/pdf-viewer-layout.css'),
+  join(rootDir, 'src/features/file-viewer/styles/multi-file-viewer.css'),
 ]
 
 function minifyCss(css) {

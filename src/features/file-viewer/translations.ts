@@ -54,12 +54,23 @@ export interface FileViewerTranslations {
   fileViewer: FileViewerShellTranslations
   imageViewer: ImageViewerTranslations
   pdfViewer: PdfViewerTranslations
+  multiFileViewer: MultiFileViewerTranslations
+}
+
+export interface MultiFileViewerTranslations {
+  fileListAriaLabel: string
+  fileListItemAriaLabel: FormattableMessage<{ name: string; index: number; total: number }>
+  fileListCollapseAriaLabel: string
+  fileListExpandAriaLabel: string
+  fileListToggleTooltip: string
+  emptyFilesMessage: string
 }
 
 export type DeepPartialFileViewerTranslations = {
   fileViewer?: Partial<FileViewerShellTranslations>
   imageViewer?: Partial<ImageViewerTranslations>
   pdfViewer?: Partial<PdfViewerTranslations>
+  multiFileViewer?: Partial<MultiFileViewerTranslations>
 }
 
 export const fileViewerTranslationsByLanguage: Record<
@@ -104,6 +115,15 @@ export const fileViewerTranslationsByLanguage: Record<
       fitWidthTooltip: 'Fit width',
       zoomInTooltip: 'Zoom in',
     },
+    multiFileViewer: {
+      fileListAriaLabel: 'File list',
+      fileListItemAriaLabel: ({ name, index, total }) =>
+        `${name}, file ${index + 1} of ${total}`,
+      fileListCollapseAriaLabel: 'Collapse file list',
+      fileListExpandAriaLabel: 'Expand file list',
+      fileListToggleTooltip: 'Collapse / expand file list',
+      emptyFilesMessage: 'No files to preview.',
+    },
   },
   portuguese: {
     fileViewer: {
@@ -143,6 +163,15 @@ export const fileViewerTranslationsByLanguage: Record<
       fitWidthTooltip: 'Redefinir zoom',
       zoomInTooltip: 'Aumentar zoom',
     },
+    multiFileViewer: {
+      fileListAriaLabel: 'Lista de arquivos',
+      fileListItemAriaLabel: ({ name, index, total }) =>
+        `${name}, arquivo ${index + 1} de ${total}`,
+      fileListCollapseAriaLabel: 'Recolher lista de arquivos',
+      fileListExpandAriaLabel: 'Expandir lista de arquivos',
+      fileListToggleTooltip: 'Minimizar / expandir lista de arquivos',
+      emptyFilesMessage: 'Nenhum arquivo para visualizar.',
+    },
   },
 }
 
@@ -160,6 +189,10 @@ export function applyTranslationOverlay(
     fileViewer: { ...builtIn.fileViewer, ...overlay.fileViewer },
     imageViewer: { ...builtIn.imageViewer, ...overlay.imageViewer },
     pdfViewer: { ...builtIn.pdfViewer, ...overlay.pdfViewer },
+    multiFileViewer: {
+      ...builtIn.multiFileViewer,
+      ...overlay.multiFileViewer,
+    },
   } as FileViewerTranslations
 }
 

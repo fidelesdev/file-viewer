@@ -30,6 +30,10 @@ export const docsNavigation: NavGroup[] = [
       { title: 'Styling', path: '/file-viewer/styling' },
       { title: 'Callbacks', path: '/file-viewer/callbacks' },
       { title: 'i18n', path: '/file-viewer/i18n' },
+      { title: 'MultiFileViewer', path: '/file-viewer/multi' },
+      { title: 'MultiFileViewer — Level 1', path: '/file-viewer/multi/level-1' },
+      { title: 'MultiFileViewer — Level 2', path: '/file-viewer/multi/level-2' },
+      { title: 'MultiFileViewer — Level 3', path: '/file-viewer/multi/level-3' },
     ],
   },
   {

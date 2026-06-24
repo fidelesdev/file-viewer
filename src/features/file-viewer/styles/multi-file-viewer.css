@@ -1,0 +1,327 @@
+.fv-multi-file-root {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--fv-bg-panel);
+  color: var(--fv-color-text);
+}
+
+.fv-multi-file-root--modal {
+  pointer-events: auto;
+  height: 100%;
+  width: 100%;
+}
+
+.fv-multi-file-body {
+  display: flex;
+  min-height: 0;
+  width: 100%;
+  flex: 1;
+  overflow: hidden;
+}
+
+.fv-multi-file-body--sidebar {
+  flex-direction: row;
+}
+
+.fv-multi-file-body--stack {
+  flex-direction: column;
+}
+
+.fv-multi-file-body--stack[data-stack-position='bottom'] {
+  flex-direction: column-reverse;
+}
+
+.fv-multi-file-list-shell {
+  display: flex;
+  min-height: 0;
+  flex-shrink: 0;
+  align-self: stretch;
+  overflow: hidden;
+  border-color: var(--fv-border-toolbar);
+}
+
+.fv-multi-file-list-shell[data-layout='sidebar'] {
+  flex-direction: column;
+  width: var(--fv-multi-file-list-width, 15rem);
+  border-right: 1px solid var(--fv-border-toolbar);
+  transition: width var(--fv-duration-medium) ease;
+}
+
+.fv-multi-file-list-shell[data-layout='sidebar'][data-collapsed='true'] {
+  width: var(--fv-multi-file-list-collapsed-width, 2.75rem);
+}
+
+.fv-multi-file-list-shell--static[data-layout='sidebar'] {
+  width: var(--fv-multi-file-list-width, 15rem);
+  border-right: 1px solid var(--fv-border-toolbar);
+}
+
+.fv-multi-file-list-shell[data-layout='stack'] {
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: 100%;
+  transition: max-height var(--fv-duration-medium) ease;
+}
+
+.fv-multi-file-list-shell[data-layout='stack'][data-collapsed='false'] {
+  max-height: calc(
+    var(--fv-multi-file-list-strip-height, 3.25rem) +
+      var(--fv-multi-file-list-toolbar-height, 3rem)
+  );
+}
+
+.fv-multi-file-list-shell[data-layout='stack'][data-collapsed='true'] {
+  max-height: var(--fv-multi-file-list-toolbar-height, 3rem);
+}
+
+.fv-multi-file-list-shell[data-collapsed='true'][data-layout='stack']
+  .fv-multi-file-list--stack {
+  height: 0;
+  max-height: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border-bottom-width: 0;
+}
+
+.fv-multi-file-list-toolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+  height: var(--fv-multi-file-list-toolbar-height, 3rem);
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 0.5rem;
+  box-sizing: border-box;
+  box-shadow: inset 0 -1px 0 var(--fv-border-toolbar);
+}
+
+.fv-multi-file-list-collapse-button {
+  display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--fv-radius-sm);
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  width: 1.375rem;
+  height: 1.375rem;
+  padding: 0;
+  transition:
+    opacity var(--fv-duration-fast),
+    background-color var(--fv-duration-fast);
+}
+
+.fv-multi-file-list-collapse-button:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.fv-multi-file-list-collapse-button:focus {
+  outline: none;
+}
+
+.fv-multi-file-list-collapse-button:focus-visible {
+  opacity: 1;
+  box-shadow: 0 0 0 1px var(--fv-color-text);
+}
+
+.fv-multi-file-list {
+  display: flex;
+  min-width: 0;
+  overflow: auto;
+}
+
+.fv-multi-file-list--sidebar {
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  flex-direction: column;
+}
+
+.fv-multi-file-list--stack {
+  flex: 0 0 auto;
+  height: var(--fv-multi-file-list-strip-height, 3.25rem);
+  max-height: var(--fv-multi-file-list-strip-height, 3.25rem);
+  min-height: 0;
+  width: 100%;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem;
+  border-bottom: 1px solid var(--fv-border-toolbar);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.fv-multi-file-body--stack[data-stack-position='bottom']
+  .fv-multi-file-list--stack {
+  border-bottom: none;
+  border-top: 1px solid var(--fv-border-toolbar);
+}
+
+.fv-multi-file-list-header {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fv-color-text-muted-70);
+}
+
+.fv-multi-file-list-item-wrap {
+  width: 100%;
+  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fv-multi-file-list-item {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
+  padding: 0.625rem 1rem;
+  text-align: left;
+  color: inherit;
+  transition:
+    background-color var(--fv-duration-fast),
+    padding-inline var(--fv-duration-medium) ease;
+}
+
+.fv-multi-file-list-shell[data-layout='sidebar'][data-collapsed='true']
+  .fv-multi-file-list-item {
+  padding-block: 0.625rem;
+  padding-inline: calc(
+    (var(--fv-multi-file-list-collapsed-width, 2.75rem) - 1.25rem) / 2
+  );
+}
+
+.fv-multi-file-list-shell[data-layout='sidebar'][data-collapsed='true']
+  .fv-multi-file-list-item-label {
+  pointer-events: none;
+}
+
+.fv-multi-file-list-shell[data-layout='sidebar'][data-collapsed='true']
+  .fv-multi-file-list-toolbar {
+  padding-inline: 0.5rem;
+}
+
+.fv-multi-file-list-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.fv-multi-file-list-item:focus {
+  outline: none;
+}
+
+.fv-multi-file-list-item:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--fv-color-text);
+}
+
+.fv-multi-file-list-item[data-active='true'] {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fv-multi-file-list--stack .fv-multi-file-list-item-wrap {
+  width: auto;
+}
+
+.fv-multi-file-list--stack .fv-multi-file-list-item {
+  width: auto;
+  flex-shrink: 0;
+  border-radius: var(--fv-radius-md);
+  border: 1px solid var(--fv-border-toolbar);
+  padding: 0.375rem 0.75rem;
+  max-width: 14rem;
+}
+
+.fv-multi-file-list--stack
+  .fv-multi-file-list-item[data-active='true'] {
+  border-color: var(--fv-color-text-muted-40);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.fv-multi-file-list-item-icon {
+  display: flex;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.fv-multi-file-list-item-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.fv-multi-file-preview {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fv-multi-file-preview .fv-shell-header {
+  height: var(--fv-multi-file-list-toolbar-height, 3rem);
+  box-sizing: border-box;
+  align-items: center;
+  padding-block: 0;
+  padding-inline: 1rem;
+}
+
+.fv-multi-file-preview .fv-shell-header-title {
+  font-size: 0.875rem;
+}
+
+.fv-multi-file-preview .fv-shell-header-actions-builtins .fv-icon {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.fv-multi-file-list-collapse-button .fv-icon {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.fv-multi-file-preview .fv-shell-root {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
+.fv-multi-file-empty {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--fv-color-text-muted-60);
+}
