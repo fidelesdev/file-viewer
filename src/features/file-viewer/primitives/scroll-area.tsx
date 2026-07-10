@@ -195,16 +195,53 @@ export function ScrollAreaScrollbar({
 
   const updateThumbPosition = useCallback(() => {
     const viewport = context.viewportRef.current
+    const track = trackRef.current
     const thumb = thumbRef.current
-    if (!viewport || !thumb || !showThumb) return
+    if (!viewport || !track || !thumb || !showThumb) return
+
+    const padding = readScrollbarPadding(track)
+    const currentSizes = isVertical
+      ? {
+          content: viewport.scrollHeight,
+          viewport: viewport.offsetHeight,
+          scrollbar: {
+            size: track.clientHeight,
+            paddingStart: padding.paddingStart,
+            paddingEnd: padding.paddingEnd,
+          },
+        }
+      : {
+          content: viewport.scrollWidth,
+          viewport: viewport.offsetWidth,
+          scrollbar: {
+            size: track.clientWidth,
+            paddingStart: padding.paddingLeft,
+            paddingEnd: padding.paddingRight,
+          },
+        }
+
+    const liveShowThumb = hasScrollAreaThumb(currentSizes)
+    if (!liveShowThumb) {
+      thumb.style.display = 'none'
+      return
+    } else {
+      thumb.style.display = ''
+    }
+
+    const liveThumbSizePx = getThumbSize(currentSizes)
+    if (isVertical) {
+      thumb.style.height = `${liveThumbSizePx}px`
+    } else {
+      thumb.style.width = `${liveThumbSizePx}px`
+    }
 
     const scrollPos = isVertical ? viewport.scrollTop : viewport.scrollLeft
-    const offset = getThumbOffsetFromScroll(scrollPos, sizes)
+    const offset = getThumbOffsetFromScroll(scrollPos, currentSizes)
 
     thumb.style.transform = isVertical
       ? `translate3d(0, ${offset}px, 0)`
       : `translate3d(${offset}px, 0, 0)`
-  }, [context.viewportRef, isVertical, showThumb, sizes])
+  }, [context.viewportRef, isVertical, showThumb])
 
   useEffect(() => {
     const viewport = context.viewportRef.current

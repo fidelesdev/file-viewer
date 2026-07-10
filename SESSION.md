@@ -1,4 +1,4 @@
-# SESSION Export — 2026-06-24
+# SESSION Export — 2026-07-08
 
 ## Índice
 
@@ -17,13 +17,15 @@
 
 | Campo | Valor |
 |-------|-------|
-| **Data/hora exportação** | 2026-06-24 (sessão contínua desde 2026-06-23) |
+| **Data/hora exportação** | 2026-07-08T23:54:00-03:00 |
 | **Workspace** | `/home/matheus/Projects/file-viewer` |
+| **Agente** | Auto (Cursor) |
 | **Transcript ID** | `76c7cf4f-7003-48eb-91c4-06e234716206` |
-| **Branch** | `feat/0001-many-files` (tracking `origin/feat/0001-many-files`) |
-| **Último commit** | `a3acc57` — wip |
+| **Branch** | `feat/0001-many-files` |
+| **Último commit** | `a77373a` — wip |
 | **Versão package.json** | `0.5.0` |
 | **Issue GitHub** | [#1 — MultiFileViewer](https://github.com/fidelesdev/file-viewer/issues/1) |
+| **Mudanças não commitadas** | Sim (~9 arquivos + 1 novo util) |
 
 ---
 
@@ -31,14 +33,14 @@
 
 ### Nome e propósito
 
-**`@fdls/file-viewer`** — biblioteca React npm para preview de arquivos in-app (`FileViewer`, `PdfViewer`, `ImageViewer`). Repositório único (não polyrepo).
+**`@fdls/file-viewer`** — biblioteca React npm para preview de arquivos in-app (`FileViewer`, `PdfViewer`, `ImageViewer`, `MultiFileViewer`). Repositório único.
 
 ### Stack
 
 - **Runtime:** Node >= 18
 - **Linguagem:** TypeScript
 - **UI:** React 19, Vite 6
-- **Estilos lib:** Plain CSS (tokens em `variables.css`, sem Tailwind na lib)
+- **Estilos lib:** Plain CSS (tokens em `variables.css`)
 - **Docs/playground:** Vite + React Router + Tailwind v4 (apenas docs)
 - **PDF:** react-pdf / pdf.js
 - **Imagem:** react-zoom-pan-pinch
@@ -47,22 +49,35 @@
 ### Comandos úteis
 
 ```bash
-npm run dev          # playground docs (porta 5173/5174)
+npm run dev          # playground docs
 npx tsc --noEmit     # typecheck
 npm run build:lib    # build biblioteca
 npm run build        # build playground
 ```
 
-### Branch e git (snapshot export)
+### Git snapshot (export)
 
 ```
-On branch feat/0001-many-files
-Changes not staged + untracked (MultiFileViewer v0.5.0 + iter UX)
-Último commit: a3acc57 wip
-Base master: c94e4c3 (v0.4.1 floating toolbar)
+Branch: feat/0001-many-files
+Last commit: a77373a wip
+
+Modified:
+  package-lock.json
+  src/features/file-viewer/FileViewer.tsx
+  src/features/file-viewer/ImageViewer.tsx
+  src/features/file-viewer/MultiFileViewer.tsx
+  src/features/file-viewer/PdfViewer.tsx
+  src/features/file-viewer/components/FileListPanel.tsx
+  src/features/file-viewer/styles/multi-file-viewer.css
+  src/features/file-viewer/styles/pdf-viewer-layout.css
+  src/features/file-viewer/styles/variables.css
+
+Untracked:
+  src/features/file-viewer/utils/scroll-element-within-container.ts
+  TODO.md (updated)
 ```
 
-**Não commitar** SESSION.md automaticamente (regra do usuário).
+**Não commitar** sem pedido explícito do usuário.
 
 ---
 
@@ -70,253 +85,188 @@ Base master: c94e4c3 (v0.4.1 floating toolbar)
 
 ### Último pedido
 
-`/save-session` — exportar contexto completo para `SESSION.md`.
+1. Discussão: os ajustes de resize do PDF são gambiarra ou refino legítimo?
+2. Registrar no `TODO.md` a dívida técnica (`ResizeTransaction`) + `/save-session`
 
 ### Estado
 
-**Concluído na sessão (UX MultiFileViewer sidebar colapsável):**
+**Concluído nesta exportação:**
 
-- Animação de colapso sem salto do ícone (overflow + padding fixo)
-- Ícones `PanelRightOpen` / `PanelRightClose` (estado atual, não próxima ação)
-- Tooltips nos itens colapsados (`side="right"`, `openOnHover`, botão nativo)
-- Tooltip estático no botão toggle: `fileListToggleTooltip` ("Collapse / expand file list")
-- Alinhamento altura toolbar sidebar ↔ header preview (`3rem` compartilhado)
-- Título preview: `0.875rem` (14px)
-- Ícones header + collapse: `1.375rem`
-- Toolbar/header com `height` fixo, `box-shadow` inset no lugar de `border-bottom` (+1px)
+- `TODO.md` atualizado com seção **PdfViewer — resize / scroll** e itens de refino arquitetural
+- `SESSION.md` sobrescrito com contexto completo da sessão
 
-### Arquivos tocados na atividade recente
+**Em andamento / não feito:**
 
-- `src/features/file-viewer/styles/multi-file-viewer.css`
-- `src/features/file-viewer/styles/variables.css`
-- `src/features/file-viewer/components/FileListItem.tsx`
-- `src/features/file-viewer/components/FileListPanel.tsx`
-- `src/features/file-viewer/components/FileViewerTooltip.tsx`
-- `src/features/file-viewer/primitives/as-child.ts`
-- `src/features/file-viewer/primitives/tooltip.tsx`
-- `src/features/file-viewer/primitives/compute-tooltip-placement.ts`
-- `src/features/file-viewer/translations.ts`
-- `src/features/file-viewer/components/icons/PanelRightClose.tsx`
-- `src/features/file-viewer/components/icons/PanelRightOpen.tsx`
+- Refatoração `ResizeTransaction` / `usePdfResizeSettle` (apenas documentada como pendência)
+- Commit / release 0.5.0
+- Fechar issue #1
+
+### Decisão de produto/engenharia (discussão)
+
+Os ajustes de resize **não são reinventar a roda** (continua react-pdf + scroll virtual). **Não são gambiarra no objetivo** (UX correta em viewer lazy + sidebar redimensionável), mas **acumulam orquestração** (flags, refs, RAF, visibility) por falta de uma máquina de estados explícita. Próximo passo maduro: extrair `ResizeTransaction` sem mudar comportamento.
 
 ---
 
 ## Histórico da sessão
 
-### Fase 1 — Implementação MultiFileViewer v0.5.0
+### 1. MultiFileViewer — sidebar colapsável
 
-**Pedido:** Issue #1 — múltiplos arquivos com listagem sidebar e stack.
+**Pedidos:** corrigir colapso com `styles.fileList.width`, animação de label, alinhamento ícones.
 
-**Entregue:**
+**Problemas e soluções:**
 
-- `MultiFileViewer` orquestra lista + `FileViewer` interno
-- Layouts: `sidebar`, `stack` (horizontal strip; `stackOrientation` removido depois)
-- Customização L1 (`classNames`/`styles`/CSS vars), L2 (`extraFileListHeader`), L3 (`renderFileListItem`/`renderFileList`)
-- `setFileViewerDefaults({ multiFileViewer })`
-- Hooks `useControllableIndex`, `useControllableBoolean`
-- Docs: Overview + Level 1/2/3, demos inline/modal
-- `README.md`, `CHANGELOG.md`, `package.json` → 0.5.0
-- `TODO.md` na raiz
-- Builds: `tsc`, `build:lib`, `build` OK
+| Bug | Causa | Fix |
+|-----|-------|-----|
+| Sidebar não colapsava visualmente | `width: 22rem` inline vencia CSS `[data-collapsed]` | `FileListPanel`: `--fv-multi-file-list-width` em vez de `width` inline |
+| Loading infinito imagem | `useEffect` resetava `hasImageLoaded` após cache hit | `useLayoutEffect` + `img.complete` + ref na `<img>` |
+| Label vazando no colapso | Animação gap/width complexa | Simplificado: wrapper removido; `display: none` no label; padding sidebar fixo |
+| Ícone collapse desalinhado | `margin-left: auto` + padding diferente | `--fv-multi-file-list-collapsed-icon-inset`; toolbar centralizada quando colapsada |
+| Ícone collapse grande | `fv-icon--md` + override 1.375rem | `fv-icon--sm` (1.25rem), botão 1.25rem |
 
-**Arquivos principais criados:**
-
-- `src/features/file-viewer/MultiFileViewer.tsx`
-- `src/features/file-viewer/components/FileListPanel.tsx`
-- `src/features/file-viewer/components/FileListItem.tsx`
-- `src/features/file-viewer/styles/multi-file-viewer.css`
-- `src/docs/pages/file-viewer/MultiFileViewer*.tsx`
-- `src/docs/components/MultiFileViewerDemo.tsx`
+**Arquivos:** `FileListPanel.tsx`, `FileListItem.tsx`, `multi-file-viewer.css`, `variables.css`
 
 ---
 
-### Fase 2 — Fixes layout stack
+### 2. MultiFileViewer — fullscreen + navegação PDF inline
 
-**Problema:** strip horizontal crescia verticalmente.
+**Pedidos:**
 
-**Solução:** `.fv-multi-file-list--stack` com `flex: 0 0 auto` + altura fixa via `--fv-multi-file-list-strip-height`.
+1. Fullscreen deve mostrar sidebar + listagem (como inline)
+2. Prev/next page não deve scrollar a página do browser
 
----
+**Soluções:**
 
-### Fase 3 — Sidebar colapsável (refactor)
+- `MultiFileViewer`: estado `isInlineFullscreenOpen`, dialog com `renderContent({ fullscreenShell: true })` — layout completo
+- `FileViewer`: prop `inlineFullscreenActive` para botão sair fullscreen
+- `scroll-element-within-container.ts`: scroll relativo ao container do PDF
+- `PdfViewer`: usa util em `scrollToContinuousPage` em vez de `scrollIntoView` global
 
-**Mudanças:**
-
-- Botão collapse **dentro** da toolbar (topo da sidebar)
-- Animação width expanded ↔ collapsed (`--fv-multi-file-list-collapsed-width: 2.75rem`)
-- Colapsado: ícones visíveis, labels clipados, tooltips só quando colapsado
-- Novos slots: `fileListShell`, `fileListToolbar`, `fileListCollapseButton`
-
----
-
-### Fase 4 — Feedback UX (iterações do usuário)
-
-#### 4.1 Label sumia instantaneamente / ícone pulava
-
-- **Causa:** `justify-content: center` + `max-width: 0` / `opacity: 0` no label ao colapsar
-- **Fix inicial:** overflow hidden + clip pela largura animada
-- **Fix refinado:** `padding-inline: calc((var(--fv-multi-file-list-collapsed-width) - 1.25rem) / 2)` — usa largura **final** colapsada, não `100%` da largura atual (evita centralizar cedo demais)
-
-#### 4.2 Ícone collapse errado
-
-- **Antes:** `ChevronLeft` / `ChevronRight`
-- **Depois:** `PanelRightOpen` / `PanelRightClose` (Lucide-style), botão à direita da toolbar (`margin-left: auto`)
-- **Lógica ícone:** reflete **estado atual** (aberto → Open, fechado → Close), não próxima ação
-
-#### 4.3 Padding colapsado / ícone centralizado
-
-- Ícones arquivo: `fv-icon--sm` (1.25rem)
-- Largura colapsada: 2.75rem
-
-#### 4.4 Tooltips não apareciam
-
-- **Causa raiz:** `FileViewerTooltip` envolvia `<FileListItem />` (componente), ref do trigger não chegava ao `<button>`
-- **Fix:** prop `tooltip` em `FileListItem` envolvendo o **botão nativo**
-- **Melhorias:** `side="right"`, `openOnHover` (sem delay 300ms), `left`/`right` no `compute-tooltip-placement`
-- **Fix as-child:** merge de `onMouseEnter`, `onFocus`, etc. (não sobrescrever handlers)
-
-#### 4.5 Tooltip botão collapse
-
-- Chave única `fileListToggleTooltip`: "Collapse / expand file list" / "Minimizar / expandir lista de arquivos"
-- `aria-label` continua dinâmico (a11y)
-
-#### 4.6 Alinhamento headers (toolbar vs preview)
-
-- Token `--fv-multi-file-list-toolbar-height: 3rem`
-- Toolbar + `.fv-multi-file-preview .fv-shell-header` mesma `height`
-- Título: `0.875rem`
-- Ícones ações + collapse: `1.375rem`
-- Botão collapse: `1.375rem` (antes 1.75rem)
-- `box-shadow: inset 0 -1px` no toolbar (evita +1px do `border-bottom`)
-- `padding-block: 0` + `align-items: center` nos dois headers
+**Arquivos:** `MultiFileViewer.tsx`, `FileViewer.tsx`, `PdfViewer.tsx`, `utils/scroll-element-within-container.ts`
 
 ---
 
-### Fase 5 — Skills auxiliares (início de sessão anterior no transcript)
+### 3. PdfViewer — resize do container (sidebar / janela)
 
-- Criada skill `sync-session` (`~/.cursor/skills/sync-session/SKILL.md`) — oposto de `save-session`
+**Pedido:** não redimensionar canvas em tempo real (trava com centenas de páginas).
+
+**Solução:** `ResizeObserver` + debounce (`debounceDelay` 300ms). Só aplica `instantSize`/`renderedSize` após estabilizar. Removido `layoutScale` em tempo real para resize de container.
+
+---
+
+### 4. PdfViewer — scroll errado após resize (página 100 → 120)
+
+**Causa:** `scrollTop` em px fixo enquanto alturas dos slots mudam.
+
+**Soluções em camadas:**
+
+1. `pageToRestoreOnResizeRef` — guarda página no início do resize
+2. Após debounce, scroll instantâneo para página alvo (`scrollElementWithinContainer`, `auto`)
+3. Reescala `renderedHeights` por razão `novaLargura/larguraAntiga` em `applySize`
+4. `resolvePageRenderWidth` + `lastRenderedWidthRef` (DRY, `MAX_PAGE_WIDTH_REM`)
+5. `isApplyingResize` — suprime `PDF_PAGE_ZOOM_TRANSITION_CLASS` no resize
+6. `restorePageAfterResizeSettles` — loop RAF até `scrollHeight` estável (4 frames)
+7. `data-applying-resize` no root — `visibility: hidden` em conteúdo + scrollbars durante settle
+8. `isApplyingResizeRef` — congela `IntersectionObserver` e `updateVisiblePagesFromScroll` (paginação/scrollbar não pulam)
+9. `setApplyingResize` — sincroniza state + ref
+10. `data-pending-resize` — `overflow-x: hidden` + `centerHorizontalOverflow()` durante pending
+
+**Arquivo principal:** `PdfViewer.tsx` (~1565 linhas), `pdf-viewer-layout.css`
+
+---
+
+### 5. Discussão arquitetural
+
+**Pergunta:** acúmulo de ajustes = gambiarra?
+
+**Conclusão documentada:**
+
+- Refino legítimo: debounce, rescale placeholders, restore por página, suprimir transição no resize
+- Patch/orquestração: hide UI, freeze IO, RAF settle — sintoma de ausência de `ResizeTransaction` explícita
+- Recomendação: extrair hook/módulo com fases `idle → pending → applying → restoring → settled`
+
+---
+
+### Comandos executados (relevantes)
+
+```bash
+npx tsc --noEmit   # OK em todas as iterações
+npm run dev        # usuário com servidor ativo
+```
 
 ---
 
 ## Pendências
 
-### Do TODO.md (follow-ups pós-v0.5.0)
+### Do usuário / release
 
-- [ ] Thumbnails reais na listagem
-- [ ] Drag-and-drop reorder
-- [ ] Lazy preload URLs adjacentes
-- [ ] Virtualização 100+ arquivos
-- [ ] Loading/error por item
-- [ ] Busca/filtro na listagem
-- [ ] Drawer mobile para listagem em modal
-- [ ] Mais extensões / txt / office
-- [ ] Testes unit + Playwright
-- [ ] Fechar issue #1 após release
+- [ ] Commit das mudanças (não pedido)
+- [ ] Push / PR / release 0.5.0
+- [ ] Fechar issue #1
 
-### Trabalho git pendente
+### TODO.md — refino PdfViewer (adicionado 2026-07-08)
 
-- **Todas as mudanças v0.5.0 + UX estão uncommitted** em `feat/0001-many-files`
-- Usuário **não pediu commit** — não commitar sem pedido explícito
-- Considerar commit + release 0.5.0 + PR quando usuário solicitar
+- [ ] Extrair **`ResizeTransaction`** / `usePdfResizeSettle`
+- [ ] Unificar flags/refs de resize
+- [ ] Fonte de verdade única para página lógica durante transação
+- [ ] Testes manuais documentados (100+ páginas, resize ambas direções, sidebar animada)
 
-### O que NÃO fazer sem pedido
+### MultiFileViewer follow-ups (inalterados)
 
-- Não commitar/push automaticamente
-- Não editar plan file `.cursor/plans/multifileviewer_component_0838e29f.plan.md`
-- Não refatorar escopo além do pedido
-- Não usar tipagem `any`
-- Não criar docs markdown extras não solicitados
+- Thumbnails, drag-drop, virtualização, drawer mobile, etc. — ver `TODO.md`
+
+### O que NÃO fazer sem pedido explícito
+
+- Commits / push
+- Editar arquivos de plano em `.cursor/plans/`
+- Escopo além do pedido
 
 ---
 
 ## Código e arquivos-chave
 
-### CSS tokens MultiFileViewer (`variables.css`)
+### PdfViewer — refs/state resize (conceito)
+
+```
+isPendingContainerResize     → container mudou, páginas ainda no tamanho antigo
+isApplyingResize             → aplicando novo tamanho + settle
+isApplyingResizeRef          → espelho para observers assíncronos
+pageToRestoreOnResizeRef     → página a restaurar
+renderedHeights              → Map<page, height> medido na largura anterior
+lastRenderedWidthRef         → largura na qual heights foram medidos
+restorePageAfterResizeSettles → RAF até scrollHeight estável, então scroll
+setApplyingResize            → sync state + ref
+```
+
+### CSS resize
 
 ```css
---fv-multi-file-list-width: 15rem;
---fv-multi-file-list-collapsed-width: 2.75rem;
---fv-multi-file-list-strip-height: 3.25rem;
---fv-multi-file-list-toolbar-height: 3rem;
+.fv-pdf-scroll-viewport[data-pending-resize='true'] { overflow-x: hidden !important; }
+
+.fv-pdf-viewer[data-applying-resize='true'] .fv-scroll-viewport-inner { visibility: hidden; }
+.fv-pdf-viewer[data-applying-resize='true'] .fv-scrollbar--vertical,
+.fv-pdf-viewer[data-applying-resize='true'] .fv-scrollbar--horizontal { visibility: hidden; }
 ```
 
-### Colapso item (sem salto)
+### Variáveis CSS multi-file
 
 ```css
-/* padding usa largura FINAL colapsada, não 100% animada */
-.fv-multi-file-list-shell[data-layout='sidebar'][data-collapsed='true']
-  .fv-multi-file-list-item {
-  padding-inline: calc(
-    (var(--fv-multi-file-list-collapsed-width, 2.75rem) - 1.25rem) / 2
-  );
-}
+--fv-multi-file-list-width
+--fv-multi-file-list-collapsed-width
+--fv-multi-file-list-collapsed-icon-inset
+--fv-multi-file-list-item-icon-size
 ```
 
-### Headers alinhados
+### Util novo
 
-```css
-.fv-multi-file-list-toolbar {
-  height: var(--fv-multi-file-list-toolbar-height, 3rem);
-  padding: 0 0.5rem;
-  box-shadow: inset 0 -1px 0 var(--fv-border-toolbar);
-}
+`src/features/file-viewer/utils/scroll-element-within-container.ts` — scroll `top` relativo ao container.
 
-.fv-multi-file-preview .fv-shell-header {
-  height: var(--fv-multi-file-list-toolbar-height, 3rem);
-  padding-block: 0;
-  align-items: center;
-}
+### ImageViewer — cache
 
-.fv-multi-file-preview .fv-shell-header-title {
-  font-size: 0.875rem; /* 14px */
-}
-```
+`useLayoutEffect` em `[url]` checa `img.complete && naturalWidth > 0` antes de depender só de `onLoad`.
 
-### FileListItem tooltip (colapsado)
+### MultiFileViewer fullscreen
 
-```tsx
-// FileListPanel passa:
-tooltip: showCollapsedTooltips ? file.name : undefined,
-tooltipSide: showCollapsedTooltips ? 'right' : undefined,
-tooltipOpenOnHover: showCollapsedTooltips,
-
-// FileListItem envolve <button> diretamente:
-<FileViewerTooltip content={tooltip} side={tooltipSide} openOnHover={tooltipOpenOnHover}>
-  {button}
-</FileViewerTooltip>
-```
-
-### Traduções toggle sidebar
-
-```typescript
-fileListToggleTooltip: 'Collapse / expand file list',        // EN
-fileListToggleTooltip: 'Minimizar / expandir lista de arquivos', // PT
-```
-
-### MultiFileViewer — props principais
-
-```typescript
-files: ViewerFileItem[]
-layout?: 'sidebar' | 'stack'
-stackPosition?: 'top' | 'bottom'
-activeIndex / defaultActiveIndex / onActiveIndexChange
-hideFileListWhenSingle?: boolean  // default true
-fileListCollapsible?: boolean     // default true for sidebar
-fileListCollapsed / defaultFileListCollapsed / onFileListCollapsedChange
-classNames / styles / extraFileListHeader / renderFileListItem / renderFileList
-// + props FileViewer (exceto name, extension, url)
-```
-
-### Estrutura componentes
-
-```
-MultiFileViewer
-├── FileViewerTooltipProvider
-├── FileListPanel (sidebar/stack)
-│   ├── toolbar (collapse button + extra header)
-│   └── FileListItem[] (tooltip quando colapsado)
-└── preview → FileViewer (key por url/id)
-```
+Dialog inline abre `renderContent({ fullscreenShell: true })` com sidebar + preview; `FileViewer` interno recebe `inlineFullscreenActive` e `onFullscreen`.
 
 ---
 
@@ -324,75 +274,37 @@ MultiFileViewer
 
 ### Workspace Rules
 
-**Prisma schema conventions** (globs `**/*.prisma` — não aplicável a este repo, sem Prisma):
+- **Prisma schema conventions** (`schema-conventions.mdc`): relations `@relation`, IDs, timestamps, indexes — aplica-se apenas a `**/*.prisma` (não relevante neste repo).
 
-- Relations bidirecionais, IDs, timestamps, indexes, unique constraints
+### User Rules (resumo fiel)
 
-### User Rules (resumo fiel — aplicar sempre)
-
-#### Git / PR
-
-- **Só commitar quando usuário pedir** — protocolo git safety (no amend agressivo, no force push main)
-- PRs via `gh` com template Summary + Test plan
-
-#### Código
-
-- **Nunca `any`**
-- Escopo mínimo — não fazer o não pedido
-- Aliases semânticos em `.map`/`.filter` (nunca `e`, `d`, `i`)
-- Preferir data-attributes + Tailwind modifiers (não concat className)
-- Cores via tokens, não arbitrárias
-- Hooks com prefixo `use` para API calls
-- `npx tsc --noEmit` após implementação
-- Componentizar só com critério (DRY, complexidade, reuse)
-
-#### Comunicação
-
-- Code citations: ` ```startLine:endLine:path ` 
-- Prosa clara, proporção ao task
-- Markdown links para paths/URLs
-
-#### Dev rules (alwaysApply)
-
-- Nunca `any`
-- Menos linhas para tarefas simples
-- Não fazer o não pedido; se incompleto, perguntar
+- **Git:** só commit quando pedido; protocolo HEREDOC; nunca force push main; nunca amend salvo condições; nunca skip hooks
+- **PR:** usar `gh`; push com `-u` se necessário
+- **Código:** escopo mínimo; nunca `any`; nomes semânticos em `.map`/callbacks; não fazer o não pedido
+- **TypeScript:** `npx tsc --noEmit` após implementação
+- **Tailwind (docs):** data-attributes para estados; sem cores arbitrárias em className
+- **Componentização:** DRY, hooks com prefixo `use`, sem over-engineering
+- **Comunicação:** prosa clara; code citations `startLine:endLine:path`; links completos
+- **API:** hooks para queries; feedback loading/error
+- **Não commitar SESSION.md automaticamente**
 
 ### Agent/Skill Rules
 
-- **save-session:** exportar SESSION.md completo, sobrescrever, não commitar
-- **sync-session:** oposto — restaurar contexto de SESSION.md
-- Não editar plan file anexado pelo usuário ao exportar sessão
+- **save-session:** exportar SESSION.md completo; sobrescrever; incluir rules; não inventar trabalho
+- Skills disponíveis mas não usadas nesta sessão: brainstorm, TDD, verification-before-completion, etc.
 
 ---
 
 ## Documentos de referência
 
-| Arquivo | Descrição |
-|---------|-----------|
-| `TODO.md` | Checklist v0.5.0 (core done) + follow-ups |
-| `CHANGELOG.md` | Entrada 0.5.0 MultiFileViewer |
-| `README.md` | API MultiFileViewer documentada |
-| `AGENTS.md` | Untracked no início da sessão |
-| Issue #1 | Requisito original MultiFileViewer |
-| Docs live | `/file-viewer/multi`, `#sidebar`, `#collapse` |
-| Transcript | `76c7cf4f-7003-48eb-91c4-06e234716206` |
-
-### Demo URLs (dev)
-
-```
-http://localhost:5173/file-viewer/multi
-http://localhost:5173/file-viewer/multi#collapse  # sidebar colapsável
-```
+| Arquivo | Uso |
+|---------|-----|
+| `TODO.md` | Checklist vivo — atualizado 2026-07-08 com PdfViewer resize + ResizeTransaction |
+| `CHANGELOG.md` | 0.5.0 MultiFileViewer |
+| `README.md` | API pública, customização L1–L3 |
+| `src/docs/pages/file-viewer/MultiFileViewerLevel1Page.tsx` | Demo `#file-list-width` |
+| Transcript | `/home/matheus/.cursor/projects/home-matheus-Projects-file-viewer/agent-transcripts/76c7cf4f-7003-48eb-91c4-06e234716206/` |
 
 ---
 
-## Validação última sessão UX
-
-- `npx tsc --noEmit` — OK
-- Tooltips colapsados verificados via browser (trigger no button, placement right)
-- Headers toolbar/preview alinhados a 3rem (último fix box-shadow + height fixo)
-
----
-
-*Export gerado por save-session. Próximo passo sugerido pelo usuário: commit/release 0.5.0 ou follow-ups do TODO.md.*
+*Export gerado por `/save-session` — workspace root.*

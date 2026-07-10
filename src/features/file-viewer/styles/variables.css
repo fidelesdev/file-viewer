@@ -49,6 +49,11 @@
 
   --fv-multi-file-list-width: 15rem;
   --fv-multi-file-list-collapsed-width: 2.75rem;
+  --fv-multi-file-list-item-icon-size: 1.25rem;
+  --fv-multi-file-list-collapsed-icon-inset: calc(
+    (var(--fv-multi-file-list-collapsed-width) - var(--fv-multi-file-list-item-icon-size)) /
+      2
+  );
   --fv-multi-file-list-strip-height: 3.25rem;
   --fv-multi-file-list-toolbar-height: 3rem;
 }

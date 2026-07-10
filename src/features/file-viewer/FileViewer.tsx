@@ -142,6 +142,11 @@ export interface FileViewerProps {
   showFullscreenButton?: boolean
   /** When set, called instead of the built-in modal preview. */
   onFullscreen?: () => void
+  /**
+   * When true in inline mode, shows the exit fullscreen control instead of enter.
+   * Used when a parent shell owns the fullscreen presentation.
+   */
+  inlineFullscreenActive?: boolean
   /** Show the print action in the header. Defaults to `true`. */
   showPrintButton?: boolean
   /** Show the download action in the header. Defaults to `true`. */
@@ -216,6 +221,7 @@ export function FileViewer({
   hideCloseButton: hideCloseButtonProp,
   showFullscreenButton: showFullscreenButtonProp,
   onFullscreen,
+  inlineFullscreenActive: inlineFullscreenActiveProp = false,
   showPrintButton: showPrintButtonProp,
   showDownloadButton: showDownloadButtonProp,
   className: classNameProp,
@@ -480,7 +486,9 @@ export function FileViewer({
     extension,
     isLoading: Boolean(isLoading),
     isDownloading,
-    isFullscreen: Boolean(panelOptions.isInlineFullscreenModal),
+    isFullscreen:
+      Boolean(panelOptions.isInlineFullscreenModal) ||
+      inlineFullscreenActiveProp,
     print: handlePrint,
     download: handleDownload,
     toggleFullscreen: handleToggleFullscreen,
@@ -493,7 +501,11 @@ export function FileViewer({
     const actions: ReactNode[] = []
     const isInlineFullscreenModal = Boolean(panelOptions.isInlineFullscreenModal)
 
-    if (showFullscreenButton && activeMode === 'inline') {
+    if (
+      showFullscreenButton &&
+      activeMode === 'inline' &&
+      !inlineFullscreenActiveProp
+    ) {
       actions.push(
         <FileViewerTooltip key="fullscreen-enter" content={t.fileViewer.fullscreenTooltip}>
           <button
@@ -512,7 +524,10 @@ export function FileViewer({
       )
     }
 
-    if (showFullscreenButton && isInlineFullscreenModal) {
+    if (
+      showFullscreenButton &&
+      (isInlineFullscreenModal || inlineFullscreenActiveProp)
+    ) {
       actions.push(
         <FileViewerTooltip
           key="fullscreen-exit"

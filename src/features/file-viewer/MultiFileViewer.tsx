@@ -7,6 +7,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useState,
 } from 'react'
 import { FileViewer, type FileViewerProps } from './FileViewer'
 import {
@@ -174,6 +175,16 @@ export function MultiFileViewer({
     onChange: onFileListCollapsedChange,
   })
 
+  const [isInlineFullscreenOpen, setIsInlineFullscreenOpen] = useState(false)
+
+  const handleOpenInlineFullscreen = useCallback(() => {
+    setIsInlineFullscreenOpen(true)
+  }, [])
+
+  const handleCloseInlineFullscreen = useCallback(() => {
+    setIsInlineFullscreenOpen(false)
+  }, [])
+
   const handleSelect = useCallback(
     (index: number) => {
       setActiveIndexState(index)
@@ -218,13 +229,16 @@ export function MultiFileViewer({
   const slotStyle = (key: keyof MultiFileViewerStyles) =>
     mergeStyles(globalMultiFileViewer?.styles?.[key], resolved.styles[key])
 
-  const rootClassName = mergeClassNames(
-    MULTI_FILE_ROOT_DEFAULT,
-    mode === 'modal' ? `${MULTI_FILE_ROOT_DEFAULT}--modal` : undefined,
-    globalMultiFileViewer?.className,
-    resolved.className,
-    resolved.classNames.root,
-  )
+  const resolveRootClassName = (fullscreenShell = false) =>
+    mergeClassNames(
+      MULTI_FILE_ROOT_DEFAULT,
+      mode === 'modal' || fullscreenShell
+        ? `${MULTI_FILE_ROOT_DEFAULT}--modal`
+        : undefined,
+      globalMultiFileViewer?.className,
+      resolved.className,
+      resolved.classNames.root,
+    )
 
   const rootStyle = mergeStyles(
     globalMultiFileViewer?.style,
@@ -261,7 +275,10 @@ export function MultiFileViewer({
     })
   }, [activeFile, pdfViewerProps])
 
-  const renderPreview = () => {
+  const renderPreview = (previewOptions?: {
+    inlineFullscreenActive?: boolean
+    onFullscreen?: () => void
+  }) => {
     if (files.length === 0 || !activeFile) {
       return (
         <div
@@ -287,6 +304,8 @@ export function MultiFileViewer({
         pdfViewerProps={mergedPdfViewerProps}
         className="fv-multi-file-inner-viewer"
         style={{ height: '100%', width: '100%', minHeight: 0 }}
+        inlineFullscreenActive={previewOptions?.inlineFullscreenActive}
+        onFullscreen={previewOptions?.onFullscreen}
       />
     )
   }
@@ -309,8 +328,11 @@ export function MultiFileViewer({
     />
   ) : null
 
-  const renderContent = () => (
-    <div className={rootClassName} style={rootStyle}>
+  const renderContent = (contentOptions?: { fullscreenShell?: boolean }) => (
+    <div
+      className={resolveRootClassName(contentOptions?.fullscreenShell)}
+      style={rootStyle}
+    >
       <div
         className={mergeClassNames(
           MULTI_FILE_BODY_DEFAULT,
@@ -325,7 +347,12 @@ export function MultiFileViewer({
           className={slotClassName('preview', MULTI_FILE_PREVIEW_DEFAULT)}
           style={slotStyle('preview')}
         >
-          {renderPreview()}
+          {renderPreview({
+            inlineFullscreenActive: contentOptions?.fullscreenShell,
+            onFullscreen: contentOptions?.fullscreenShell
+              ? handleCloseInlineFullscreen
+              : handleOpenInlineFullscreen,
+          })}
         </div>
       </div>
     </div>
@@ -337,7 +364,25 @@ export function MultiFileViewer({
     }
 
     return (
-      <FileViewerTooltipProvider>{renderContent()}</FileViewerTooltipProvider>
+      <FileViewerTooltipProvider>
+        {renderContent()}
+        {isInlineFullscreenOpen ? (
+          <Dialog.Root
+            open={isInlineFullscreenOpen}
+            onOpenChange={setIsInlineFullscreenOpen}
+          >
+            <Dialog.Portal>
+              <Dialog.Content
+                aria-describedby={undefined}
+                className={dialogContentClassName}
+                style={dialogContentStyle as CSSProperties}
+              >
+                {renderContent({ fullscreenShell: true })}
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
+        ) : null}
+      </FileViewerTooltipProvider>
     )
   }
 

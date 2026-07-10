@@ -80,7 +80,9 @@ function resolveSidebarShellStyle(
   const listWidth = styles?.fileList?.width
 
   return mergeStyles(
-    listWidth !== undefined ? { width: listWidth } : undefined,
+    listWidth !== undefined
+      ? ({ '--fv-multi-file-list-width': listWidth } as React.CSSProperties)
+      : undefined,
     styles?.fileListShell,
   )
 }
@@ -160,9 +162,9 @@ export function FileListPanel({
         onClick={() => onCollapsedChange?.(!collapsed)}
       >
         {collapsed ? (
-          <PanelRightClose className="fv-icon fv-icon--md" aria-hidden />
+          <PanelRightClose className="fv-icon fv-icon--sm" aria-hidden />
         ) : (
-          <PanelRightOpen className="fv-icon fv-icon--md" aria-hidden />
+          <PanelRightOpen className="fv-icon fv-icon--sm" aria-hidden />
         )}
       </button>
     </FileViewerTooltip>

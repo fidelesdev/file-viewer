@@ -114,8 +114,8 @@
   background: transparent;
   color: inherit;
   opacity: 0.7;
-  width: 1.375rem;
-  height: 1.375rem;
+  width: 1.25rem;
+  height: 1.25rem;
   padding: 0;
   transition:
     opacity var(--fv-duration-fast),
@@ -201,27 +201,28 @@
   padding: 0.625rem 1rem;
   text-align: left;
   color: inherit;
-  transition:
-    background-color var(--fv-duration-fast),
-    padding-inline var(--fv-duration-medium) ease;
+  transition: background-color var(--fv-duration-fast);
 }
 
-.fv-multi-file-list-shell[data-layout='sidebar'][data-collapsed='true']
-  .fv-multi-file-list-item {
+.fv-multi-file-list-shell[data-layout='sidebar'] .fv-multi-file-list-item {
   padding-block: 0.625rem;
-  padding-inline: calc(
-    (var(--fv-multi-file-list-collapsed-width, 2.75rem) - 1.25rem) / 2
-  );
+  padding-inline: var(--fv-multi-file-list-collapsed-icon-inset, 0.75rem);
 }
 
 .fv-multi-file-list-shell[data-layout='sidebar'][data-collapsed='true']
   .fv-multi-file-list-item-label {
-  pointer-events: none;
+  display: none;
 }
 
 .fv-multi-file-list-shell[data-layout='sidebar'][data-collapsed='true']
   .fv-multi-file-list-toolbar {
-  padding-inline: 0.5rem;
+  justify-content: center;
+  padding-inline: var(--fv-multi-file-list-collapsed-icon-inset, 0.75rem);
+}
+
+.fv-multi-file-list-shell[data-layout='sidebar'][data-collapsed='true']
+  .fv-multi-file-list-collapse-button {
+  margin-left: 0;
 }
 
 .fv-multi-file-list-item:hover {
@@ -267,7 +268,7 @@
 
 .fv-multi-file-list-item-label {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -297,11 +298,6 @@
 }
 
 .fv-multi-file-preview .fv-shell-header-actions-builtins .fv-icon {
-  width: 1.375rem;
-  height: 1.375rem;
-}
-
-.fv-multi-file-list-collapse-button .fv-icon {
   width: 1.375rem;
   height: 1.375rem;
 }

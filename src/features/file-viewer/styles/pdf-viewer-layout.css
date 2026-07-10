@@ -23,6 +23,22 @@
   border-radius: inherit;
 }
 
+.fv-pdf-scroll-viewport[data-pending-resize='true'] {
+  overflow-x: hidden !important;
+}
+
+/* While a resize settles, keep the layout (so scrollHeight is measurable) but hide the pages
+ * and scrollbars, so the corrective scroll is not seen as a flash jumping from the wrong
+ * position and page-related UI (pagination, scrollbar thumb) does not shift during the settle. */
+.fv-pdf-viewer[data-applying-resize='true'] .fv-scroll-viewport-inner {
+  visibility: hidden;
+}
+
+.fv-pdf-viewer[data-applying-resize='true'] .fv-scrollbar--vertical,
+.fv-pdf-viewer[data-applying-resize='true'] .fv-scrollbar--horizontal {
+  visibility: hidden;
+}
+
 .fv-pdf-scroll-viewport > .fv-scroll-viewport-inner > * {
   min-height: 100%;
 }

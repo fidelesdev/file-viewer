@@ -18,6 +18,7 @@ import {
   ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -47,6 +48,7 @@ import {
   type ViewerLanguage,
 } from './translations'
 import { resolveOption } from './utils/resolve-options'
+import { scrollElementWithinContainer } from './utils/scroll-element-within-container'
 import { mergeClassNames } from './utils/merge-slot-props'
 import { composeExtraActionsArea } from './utils/compose-extra-actions-area'
 
@@ -74,6 +76,9 @@ const PDF_PAGE_DEFAULT = 'fv-pdf-page'
 const PDF_PAGE_INNER_DEFAULT = 'fv-pdf-page-inner'
 
 const CONTINUOUS_PAGE_GAP_PX = 16
+
+/** Upper bound for the rendered page width, matching the `--fv-max-page-width` token. */
+const MAX_PAGE_WIDTH_REM = 50
 
 /** While programmatic nav runs, IO must not overwrite pageNumber (many pages visible at low zoom). */
 const PROGRAMMATIC_NAV_SUPPRESS_MS = 900
@@ -110,7 +115,7 @@ export interface PdfViewerProps {
   // View mode
   viewMode?: PdfViewMode // default: 'continuous'
 
-  // Resize: debounced size used for <Page width=…> (canvas); instant size drives CSS scale while resizing
+  // Resize: container size is debounced — page slots and canvas update only after resize settles
   debounceDelay?: number // default: 300ms
   /** Debounce before re-rendering canvas at new resolution after zoom (default: 500ms). */
   zoomDebounceDelay?: number
@@ -214,6 +219,10 @@ export default function PdfViewer(props: PdfViewerProps) {
 
   const [instantSize, setInstantSize] = useState({ width: 0, height: 0 })
   const [renderedSize, setRenderedSize] = useState({ width: 0, height: 0 })
+  const [isPendingContainerResize, setIsPendingContainerResize] = useState(false)
+  /** True on the render that applies a resize, so pages snap to the new size (no zoom transition)
+   * and the restore scroll can measure the final heights instead of a mid-animation value. */
+  const [isApplyingResize, setIsApplyingResize] = useState(false)
   const [pageOriginalSize, setPageOriginalSize] = useState({
     width: 0,
     height: 0,
@@ -244,6 +253,120 @@ export default function PdfViewer(props: PdfViewerProps) {
   /** Viewport center as a fraction of scrollable content (zoom focal point). */
   const scrollAnchorRef = useRef({ ratioY: 0, ratioX: 0 })
   const zoomAnimFrameRef = useRef<number | null>(null)
+  /**
+   * Page the user was viewing when a container resize started. Restored once the
+   * pages re-render at the new size, so a fixed px scroll offset does not land on
+   * a different page after every page shrinks/grows.
+   */
+  const pageToRestoreOnResizeRef = useRef<number | null>(null)
+  const resizeRestoreFrameRef = useRef<number | null>(null)
+  const resizeRestoreTargetPageRef = useRef<number | null>(null)
+  /** Mirrors `isApplyingResize` for async observers, so page tracking freezes during the settle. */
+  const isApplyingResizeRef = useRef(false)
+
+  /** Last render width the measured page heights correspond to (used to rescale on resize). */
+  const lastRenderedWidthRef = useRef(0)
+  /** Last container size applied via ResizeObserver (avoids no-op / mount churn). */
+  const lastAppliedContainerSizeRef = useRef({ width: 0, height: 0 })
+  /**
+   * Until the document has a stable first layout, treat size changes as quiet updates —
+   * no hide / restore settle (that flash on first PDF open).
+   */
+  const isReadyForResizeSettleRef = useRef(false)
+
+  const centerHorizontalOverflow = useCallback(() => {
+    const container = containerRef.current
+    if (!container) {
+      return
+    }
+
+    const overflow = container.scrollWidth - container.clientWidth
+    container.scrollLeft = overflow > 0 ? overflow / 2 : 0
+  }, [])
+
+  /** Rendered page width for a given container width (clamped to the max page width). */
+  const resolvePageRenderWidth = useCallback((containerWidth: number) => {
+    if (!containerWidth) {
+      return 0
+    }
+
+    let remToPx = 16
+    if (typeof document !== 'undefined') {
+      remToPx =
+        parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+    }
+
+    return Math.trunc(Math.min(containerWidth, remToPx * MAX_PAGE_WIDTH_REM))
+  }, [])
+
+  const setApplyingResize = useCallback((value: boolean) => {
+    isApplyingResizeRef.current = value
+    setIsApplyingResize(value)
+  }, [])
+
+  const cancelResizeRestoreLoop = useCallback(() => {
+    if (resizeRestoreFrameRef.current !== null) {
+      cancelAnimationFrame(resizeRestoreFrameRef.current)
+      resizeRestoreFrameRef.current = null
+    }
+    resizeRestoreTargetPageRef.current = null
+  }, [])
+
+  const restorePageAfterResizeSettles = useCallback(
+    (targetPage: number) => {
+      cancelResizeRestoreLoop()
+      resizeRestoreTargetPageRef.current = targetPage
+      isApplyingResizeRef.current = true
+
+      let lastScrollHeight = -1
+      let stableFrames = 0
+      let frameCount = 0
+      const MAX_WAIT_FRAMES = 120
+      const REQUIRED_STABLE_FRAMES = 4
+
+      const step = () => {
+        const container = containerRef.current
+        const element = pageRefs.current.get(targetPage)
+        if (!container || !element) {
+          frameCount += 1
+          if (frameCount >= MAX_WAIT_FRAMES) {
+            pageToRestoreOnResizeRef.current = null
+            setApplyingResize(false)
+            cancelResizeRestoreLoop()
+            return
+          }
+          resizeRestoreFrameRef.current = requestAnimationFrame(step)
+          return
+        }
+
+        const currentScrollHeight = container.scrollHeight
+        if (currentScrollHeight === lastScrollHeight) {
+          stableFrames += 1
+        } else {
+          stableFrames = 0
+          lastScrollHeight = currentScrollHeight
+        }
+
+        frameCount += 1
+        if (
+          stableFrames >= REQUIRED_STABLE_FRAMES ||
+          frameCount >= MAX_WAIT_FRAMES
+        ) {
+          scrollElementWithinContainer(element, container, 'auto')
+          pageToRestoreOnResizeRef.current = null
+          centerHorizontalOverflow()
+          setApplyingResize(false)
+          cancelResizeRestoreLoop()
+          return
+        }
+
+        resizeRestoreFrameRef.current = requestAnimationFrame(step)
+      }
+
+      resizeRestoreFrameRef.current = requestAnimationFrame(step)
+    },
+    [cancelResizeRestoreLoop, centerHorizontalOverflow, setApplyingResize],
+  )
 
   const captureScrollAnchor = useCallback(() => {
     const container = containerRef.current
@@ -364,8 +487,40 @@ export default function PdfViewer(props: PdfViewerProps) {
     setHasZoomed(false)
     userOverrodeScrollDuringZoomRef.current = false
     cancelScrollAnchorSync()
+    cancelResizeRestoreLoop()
     renderedHeights.current.clear()
-  }, [url, viewMode, cancelScrollAnchorSync])
+    lastRenderedWidthRef.current = 0
+    lastAppliedContainerSizeRef.current = { width: 0, height: 0 }
+    isReadyForResizeSettleRef.current = false
+    pageToRestoreOnResizeRef.current = null
+    setApplyingResize(false)
+  }, [
+    url,
+    viewMode,
+    cancelScrollAnchorSync,
+    cancelResizeRestoreLoop,
+    setApplyingResize,
+  ])
+
+  /**
+   * Arm the hide/restore settle path only after the first stable PDF layout.
+   * Early ResizeObserver noise on first open must stay quiet (no flash).
+   */
+  useEffect(() => {
+    if (
+      isReadyForResizeSettleRef.current ||
+      numPages <= 0 ||
+      renderedSize.width <= 0 ||
+      pageOriginalSize.width <= 0
+    ) {
+      return
+    }
+
+    const frameId = requestAnimationFrame(() => {
+      isReadyForResizeSettleRef.current = true
+    })
+    return () => cancelAnimationFrame(frameId)
+  }, [numPages, renderedSize.width, pageOriginalSize.width])
 
   useEffect(() => {
     if (instantZoom === renderedZoom) return
@@ -408,36 +563,178 @@ export default function PdfViewer(props: PdfViewerProps) {
 
   // --- Size Tracking ---
   useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        const newSize = {
-          width: Math.trunc(containerRef.current.clientWidth),
-          height: Math.trunc(containerRef.current.clientHeight),
-        }
-        setInstantSize((prev) => {
-          if (prev.width === newSize.width && prev.height === newSize.height) return prev
-          return newSize
-        })
-        setRenderedSize((prev) =>
-          prev.width === 0 && newSize.width > 0 ? newSize : prev,
-        )
+    let debounceTimer: number | null = null
+    let hasInitialSize = false
+
+    const applySize = (
+      newSize: { width: number; height: number },
+      options?: { quiet?: boolean },
+    ) => {
+      const prevApplied = lastAppliedContainerSizeRef.current
+      if (
+        prevApplied.width === newSize.width &&
+        prevApplied.height === newSize.height
+      ) {
+        return
       }
+      lastAppliedContainerSizeRef.current = newSize
+
+      // Measured heights were captured at the previous render width. Rescale them by the
+      // width ratio (aspect ratio per page is preserved) so placeholder pages don't keep a
+      // stale height — new width with old height would misplace the scroll after a resize.
+      const newRenderWidth = resolvePageRenderWidth(newSize.width)
+      const prevRenderWidth = lastRenderedWidthRef.current
+      if (
+        prevRenderWidth > 0 &&
+        newRenderWidth > 0 &&
+        prevRenderWidth !== newRenderWidth
+      ) {
+        const ratio = newRenderWidth / prevRenderWidth
+        renderedHeights.current.forEach((height, page) => {
+          renderedHeights.current.set(page, Math.round(height * ratio))
+        })
+      }
+      lastRenderedWidthRef.current = newRenderWidth
+
+      const shouldSettle =
+        !options?.quiet &&
+        isReadyForResizeSettleRef.current &&
+        pageToRestoreOnResizeRef.current !== null
+
+      if (shouldSettle) {
+        setApplyingResize(true)
+      }
+
+      setInstantSize((prev) => {
+        if (prev.width === newSize.width && prev.height === newSize.height) {
+          return prev
+        }
+        return newSize
+      })
+      setRenderedSize((prev) => {
+        if (prev.width === newSize.width && prev.height === newSize.height) {
+          return prev
+        }
+        return newSize
+      })
+      setIsPendingContainerResize(false)
     }
 
-    const observer = new ResizeObserver(() => updateSize())
-    if (containerRef.current) observer.observe(containerRef.current)
-    updateSize()
+    const scheduleSizeUpdate = () => {
+      if (!containerRef.current) {
+        return
+      }
 
-    return () => observer.disconnect()
-  }, [])
+      const newSize = {
+        width: Math.trunc(containerRef.current.clientWidth),
+        height: Math.trunc(containerRef.current.clientHeight),
+      }
+
+      if (newSize.width <= 0) {
+        return
+      }
+
+      if (!hasInitialSize) {
+        hasInitialSize = true
+        applySize(newSize, { quiet: true })
+        return
+      }
+
+      if (!isReadyForResizeSettleRef.current) {
+        // Still mounting / first layout — update dimensions quietly (no hide flash).
+        applySize(newSize, { quiet: true })
+        return
+      }
+
+      const newRenderWidth = resolvePageRenderWidth(newSize.width)
+      if (newRenderWidth === lastRenderedWidthRef.current) {
+        // Page width won't change, so pages don't need to resize or re-render.
+        // We can apply the container size immediately and quietly without any flashes.
+        if (debounceTimer !== null) {
+          window.clearTimeout(debounceTimer)
+          debounceTimer = null
+        }
+        pageToRestoreOnResizeRef.current = null
+        cancelResizeRestoreLoop()
+        setApplyingResize(false)
+        applySize(newSize, { quiet: true })
+        return
+      }
+
+      setIsPendingContainerResize(true)
+      if (pageToRestoreOnResizeRef.current === null) {
+        pageToRestoreOnResizeRef.current = pageNumberRef.current
+      }
+      requestAnimationFrame(() => {
+        centerHorizontalOverflow()
+      })
+
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer)
+      }
+
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null
+        applySize(newSize)
+      }, debounceDelay)
+    }
+
+    const observer = new ResizeObserver(() => scheduleSizeUpdate())
+    if (containerRef.current) {
+      observer.observe(containerRef.current)
+    }
+    scheduleSizeUpdate()
+
+    return () => {
+      observer.disconnect()
+      if (debounceTimer !== null) {
+        window.clearTimeout(debounceTimer)
+      }
+    }
+  }, [
+    centerHorizontalOverflow,
+    debounceDelay,
+    resolvePageRenderWidth,
+    setApplyingResize,
+    cancelResizeRestoreLoop,
+  ])
+
+  useLayoutEffect(() => {
+    if (isPendingContainerResize) {
+      // Container changed but pages still hold the old size: keep horizontal overflow centered.
+      centerHorizontalOverflow()
+      return
+    }
+
+    // Pages just re-rendered at the new container size (transition suppressed, so heights are
+    // final here). Keep the user on the same page, otherwise the unchanged px scroll offset
+    // would map to a different page.
+    const restorePage = pageToRestoreOnResizeRef.current
+    if (restorePage !== null) {
+      if (
+        resizeRestoreTargetPageRef.current !== restorePage ||
+        resizeRestoreFrameRef.current === null
+      ) {
+        restorePageAfterResizeSettles(restorePage)
+      }
+      return
+    }
+
+    centerHorizontalOverflow()
+    setApplyingResize(false)
+  }, [
+    centerHorizontalOverflow,
+    isPendingContainerResize,
+    renderedSize,
+    restorePageAfterResizeSettles,
+    setApplyingResize,
+  ])
 
   useEffect(() => {
-    if (instantSize.width === 0) return
-    const timerId = window.setTimeout(() => {
-      setRenderedSize(instantSize)
-    }, debounceDelay)
-    return () => window.clearTimeout(timerId)
-  }, [instantSize, debounceDelay])
+    return () => {
+      cancelResizeRestoreLoop()
+    }
+  }, [cancelResizeRestoreLoop])
 
   // --- Dimension Calculation ---
   const calculateDimensions = useCallback(
@@ -449,14 +746,7 @@ export default function PdfViewer(props: PdfViewerProps) {
         }
       }
 
-      let remToPx = 16
-      if (typeof document !== 'undefined') {
-        remToPx =
-          parseFloat(getComputedStyle(document.documentElement).fontSize) ||
-          16
-      }
-
-      const width = Math.trunc(Math.min(container.width, remToPx * 50))
+      const width = resolvePageRenderWidth(container.width)
 
       // Before the first page reports its size, use an approximation so <Page> can mount
       // and unlock aspect ratio (avoids height=undefined → nothing rendered).
@@ -470,7 +760,7 @@ export default function PdfViewer(props: PdfViewerProps) {
       const pageRatio = pageOriginalSize.width / pageOriginalSize.height
       return { width, height: Math.trunc(width / pageRatio) }
     },
-    [pageOriginalSize],
+    [pageOriginalSize, resolvePageRenderWidth],
   )
 
   const instantDimensions = useMemo(
@@ -542,10 +832,22 @@ export default function PdfViewer(props: PdfViewerProps) {
     layoutScale,
   ])
 
-  useEffect(() => {
-    if (!hasZoomed || userOverrodeScrollDuringZoomRef.current) return
+  useLayoutEffect(() => {
+    if (!hasZoomed || userOverrodeScrollDuringZoomRef.current) {
+      return
+    }
+    // Re-apply the captured focal point after page slots resize, before paint —
+    // avoids the scrollbar/content jump that shows up when syncing only in useEffect.
     runScrollAnchorSync()
-  }, [hasZoomed, renderedZoom, runScrollAnchorSync])
+  }, [
+    hasZoomed,
+    instantZoom,
+    renderedZoom,
+    layoutScale,
+    zoomedInstantDimensions.width,
+    zoomedInstantDimensions.height,
+    runScrollAnchorSync,
+  ])
 
   useEffect(() => {
     if (
@@ -704,6 +1006,11 @@ export default function PdfViewer(props: PdfViewerProps) {
         const element = pageRefs.current.get(validPage)
         const container = containerRef.current
 
+        if (element && container) {
+          scrollElementWithinContainer(element, container, 'smooth')
+          return
+        }
+
         if (element) {
           element.scrollIntoView({
             behavior: 'smooth' as ScrollBehavior,
@@ -789,7 +1096,8 @@ export default function PdfViewer(props: PdfViewerProps) {
       !container ||
       viewMode !== 'continuous' ||
       numPages <= 0 ||
-      isPreservingScrollRef.current
+      isPreservingScrollRef.current ||
+      isApplyingResizeRef.current
     ) {
       return
     }
@@ -861,6 +1169,12 @@ export default function PdfViewer(props: PdfViewerProps) {
 
     const observer = new IntersectionObserver(
       (entries) => {
+        // While a resize settles, the scroll offset is intentionally still on the old position
+        // (content hidden). Skip page tracking so pagination and scrollbar don't jump then snap back.
+        if (isApplyingResizeRef.current) {
+          return
+        }
+
         for (const entry of entries) {
           const pStr = entry.target.getAttribute('data-page-number')
           if (!pStr) continue
@@ -928,24 +1242,21 @@ export default function PdfViewer(props: PdfViewerProps) {
     userOverrodeScrollDuringZoomRef.current = false
     captureScrollAnchor()
     setInstantZoom((prev) => Math.min(prev * 1.3, 4))
-    runScrollAnchorSync()
-  }, [captureScrollAnchor, runScrollAnchorSync])
+  }, [captureScrollAnchor])
 
   const handleZoomOut = useCallback(() => {
     setHasZoomed(true)
     userOverrodeScrollDuringZoomRef.current = false
     captureScrollAnchor()
     setInstantZoom((prev) => Math.max(prev / 1.3, 0.5))
-    runScrollAnchorSync()
-  }, [captureScrollAnchor, runScrollAnchorSync])
+  }, [captureScrollAnchor])
 
   const handleZoomReset = useCallback(() => {
     setHasZoomed(true)
     userOverrodeScrollDuringZoomRef.current = false
     captureScrollAnchor()
     setInstantZoom(1)
-    runScrollAnchorSync()
-  }, [captureScrollAnchor, runScrollAnchorSync])
+  }, [captureScrollAnchor])
 
   const zoomOutDisabled = instantZoom <= 0.501
   const zoomInDisabled = instantZoom >= 3.99
@@ -1169,13 +1480,16 @@ export default function PdfViewer(props: PdfViewerProps) {
   }
 
   const pageTransitionClass =
-    hasZoomed && pageOriginalSize.width ? PDF_PAGE_ZOOM_TRANSITION_CLASS : ''
+    hasZoomed && pageOriginalSize.width && !isApplyingResize
+      ? PDF_PAGE_ZOOM_TRANSITION_CLASS
+      : ''
 
   return (
     <FileViewerTooltipProvider>
       <div
         className={pdfClassName('root', PDF_VIEWER_ROOT_DEFAULT)}
         style={pdfStyle('root')}
+        data-applying-resize={isApplyingResize ? 'true' : undefined}
       >
         <ScrollAreaRoot
           className={pdfClassName('scrollArea', PDF_SCROLL_AREA_DEFAULT)}
@@ -1185,6 +1499,7 @@ export default function PdfViewer(props: PdfViewerProps) {
           ref={containerRef}
           className={pdfClassName('scrollViewport', PDF_SCROLL_VIEWPORT_DEFAULT)}
           style={pdfStyle('scrollViewport')}
+          data-pending-resize={isPendingContainerResize ? 'true' : undefined}
         >
           <div className="fv-pdf-document-inner">
             <Document

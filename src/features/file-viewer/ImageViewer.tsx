@@ -7,7 +7,14 @@ import {
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch'
 import { ZoomIn, ZoomOut, Scan, LoaderCircle } from './components/icons'
-import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
+import {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  type ReactNode,
+} from 'react'
 import {
   ViewerFloatingToolbar,
   ViewerToolbarDivider,
@@ -116,6 +123,7 @@ export default function ImageViewer({
   const [maxZoom, setMaxZoom] = useState(16)
   const [isPanning, setIsPanning] = useState(false)
   const [hasImageLoaded, setHasImageLoaded] = useState(false)
+  const imageRef = useRef<HTMLImageElement>(null)
   const [viewport, setViewport] = useState({
     scale: 1,
     positionX: 0,
@@ -221,12 +229,7 @@ export default function ImageViewer({
     }
   }, [])
 
-  useEffect(() => {
-    setHasImageLoaded(false)
-  }, [url])
-
-  const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = event.currentTarget
+  const applyLoadedImageState = useCallback((img: HTMLImageElement) => {
     const naturalWidth = img.naturalWidth
     const currentWidth = img.clientWidth
 
@@ -237,6 +240,26 @@ export default function ImageViewer({
       setMaxZoom(calculatedMax)
     }
     setHasImageLoaded(true)
+  }, [])
+
+  useLayoutEffect(() => {
+    setHasImageLoaded(false)
+
+    const img = imageRef.current
+    if (!img?.complete) {
+      return
+    }
+
+    if (img.naturalWidth > 0) {
+      applyLoadedImageState(img)
+      return
+    }
+
+    setHasImageLoaded(true)
+  }, [url, applyLoadedImageState])
+
+  const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    applyLoadedImageState(event.currentTarget)
   }
 
   const handleImageError = () => {
@@ -437,6 +460,7 @@ export default function ImageViewer({
                   contentClass="fv-transform-content"
                 >
                   <img
+                    ref={imageRef}
                     src={url}
                     alt={name}
                     onLoad={handleImageLoad}
