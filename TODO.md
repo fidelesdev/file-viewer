@@ -78,6 +78,52 @@
 - [x] `ImageViewer`: `hasImageLoaded` com imagem em cache ao alternar arquivo (image → PDF → image)
 - [x] `FileListPanel`: colapso com `styles.fileList.width` via `--fv-multi-file-list-width` (não inline `width`)
 
+## Refatoração de Documentação — Guia de Tutoriais e Referências
+
+- [x] **Introdução e Setup**
+  - [x] Começando (`getting-started`): Refatorar para incluir melhores exemplos práticos de instalação, importação de CSS e setup sem fricção.
+- [x] **Módulo: FileViewer**
+  - [x] Conceitos Básicos (`file-viewer`): Detalhar funcionamento do preview de arquivo único.
+  - [x] Modos de Visualização (`file-viewer/modes`): Enriquecer explicação de modos inline e modal.
+  - [x] Níveis de Customização do Header:
+    - [x] Level 1 (`header/level-1`): Configuração declarativa rápida.
+    - [x] Level 2 (`header/level-2`): Slots e inserções extras de botões.
+    - [x] Level 3 (`header/level-3`): Sobrescrita completa do componente de Header.
+  - [x] Níveis de Customização da Toolbar:
+    - [x] Level 1 (`toolbar/level-1`): Visibilidade de ações nativas.
+    - [x] Level 2 (`toolbar/level-2`): Injeção de itens e separadores extras.
+    - [x] Level 3 (`toolbar/level-3`): Sobrescrita total da barra de ferramentas.
+  - [x] Estilização (`file-viewer/styling`): Documentar detalhadamente classes globais e CSS variables.
+  - [x] Callbacks (`file-viewer/callbacks`): Casos reais de tracking e analytics.
+  - [x] Tradução e I18n (`file-viewer/i18n`): Guia de overrides de strings.
+- [x] **Módulo: MultiFileViewer**
+  - [x] Visão Geral (`file-viewer/multi`): Detalhar arquitetura do visualizador múltiplo e seus layouts (sidebar, stack V/H).
+  - [x] Níveis de Customização da Listagem:
+    - [x] Level 1 (`multi/level-1`): Configurações declarativas básicas e ordenação.
+    - [x] Level 2 (`multi/level-2`): Slots para inserção de componentes na listagem (ex.: headers extras).
+    - [x] Level 3 (`multi/level-3`): Render customizado completo de itens e lista (`renderFileListItem`).
+- [x] **Módulo: PdfViewer**
+  - [x] Visão Geral (`pdf-viewer`): Explicação do motor do visualizador de PDF (react-pdf).
+  - [x] Modos de Exibição (`pdf-viewer/view-modes`): Diferenças entre visualização contínua e página por página.
+  - [x] Paginação e Navegação (`pdf-viewer/pagination`): APIs de controle programático de página.
+  - [x] Customização de Toolbar (`pdf-viewer/toolbar`): Modificações exclusivas do PdfViewer.
+  - [x] Pipeline de Renderização (`pdf-viewer/rendering`): Entendimento de canvas vs text layer vs annotation layer.
+  - [x] Performance e Resize (`pdf-viewer/performance`): Debounce de resize, re-escalonamento de placeholder e virtualização de render.
+  - [x] Estilização (`pdf-viewer/styling`): Vars CSS e seletores do PdfViewer.
+  - [x] Callbacks (`pdf-viewer/callbacks`): Handlers de sucesso, falha e renderização de página.
+- [x] **Módulo: ImageViewer**
+  - [x] Visão Geral (`image-viewer`): Preview de imagens de alta performance.
+  - [x] Toolbar (`image-viewer/toolbar`): Customizações e injeções de ferramentas de imagem.
+  - [x] Estilização (`image-viewer/styling`): Aspectos visuais e classes para ImageViewer.
+  - [x] Interações (`image-viewer/interaction`): Zoom por gesto, double-tap, pan e reset de viewport.
+- [x] **Módulo: Globals e Primitivos**
+  - [x] Configurações Globais (`globals/defaults`): Guia detalhado de uso de `setFileViewerDefaults`.
+  - [x] Tooltip Global (`globals/tooltip`): Provedor global e customização de tooltips.
+  - [x] Auto-Hide (`globals/auto-hide`): Mecanismo de ocultação automática de toolbars.
+  - [x] Traduções (`globals/translations`): Centralização de dicionários e localização.
+  - [x] Referência de API (`api-reference`): Documentar todas as tipagens exportadas de forma limpa e automática.
+  - [x] Componente Tooltip (`components/tooltip`): API do utilitário interno exposto de tooltip.
+
 ## Concluído
 
 ### UX MultiFileViewer + viewers — 2026-07-08

@@ -54,7 +54,7 @@ export function DocsSidebar({ mobileOpen, onMobileClose }: DocsSidebarProps) {
                           'block rounded-md px-2 py-1.5 text-sm transition-colors',
                           'group-data-[collapsed=true]/sidebar:truncate group-data-[collapsed=true]/sidebar:px-1 group-data-[collapsed=true]/sidebar:text-center',
                           isActive
-                            ? 'bg-emerald-500/10 text-emerald-400'
+                            ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
                             : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100',
                         ].join(' ')
                       }

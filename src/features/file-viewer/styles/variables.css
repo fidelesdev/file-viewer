@@ -44,7 +44,7 @@
   --fv-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 
   --fv-max-page-width: 50rem;
-  --fv-image-max-height: calc(100dvh - 10rem);
+  --fv-image-max-height: 100%;
   --fv-toolbar-height: 3.25rem;
 
   --fv-multi-file-list-width: 15rem;

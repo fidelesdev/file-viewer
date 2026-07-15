@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 type CodeBlockProps = {
   code: string
+  language?: string
 }
 
 export function CodeBlock({ code }: CodeBlockProps) {

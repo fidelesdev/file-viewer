@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, Link } from 'react-router-dom'
 import { DocSectionsProvider } from '../context/DocSectionsContext'
 import { DocsSidebar } from './DocsSidebar'
 import { DocsOnThisPage } from './DocsOnThisPage'
@@ -22,12 +22,12 @@ export function DocsLayout() {
         >
           ☰
         </button>
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2 hover:opacity-80">
           <span className="font-semibold text-zinc-100">@fdls/file-viewer</span>
           <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400">
             docs
           </span>
-        </div>
+        </Link>
       </header>
 
       <DocsSidebar
